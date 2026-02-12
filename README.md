@@ -4,7 +4,7 @@
 >
 > Desenvolvida para a Lacrei Saúde, com foco em saúde inclusiva e de qualidade para a comunidade LGBTQIAPN+.
 
-[![CI/CD Pipeline](https://github.com/seu-usuario/lacrei-saude-api/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/seu-usuario/lacrei-saude-api/actions)
+[![CI/CD Pipeline](https://github.com/CarlosAlbertoFurtado/lacrei-saude-api/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/CarlosAlbertoFurtado/lacrei-saude-api/actions)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.1-green.svg)](https://djangoproject.com)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -125,7 +125,7 @@ lacrei-saude-api/
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/seu-usuario/lacrei-saude-api.git
+git clone https://github.com/CarlosAlbertoFurtado/lacrei-saude-api.git
 cd lacrei-saude-api
 
 # 2. Instalar dependências com Poetry
@@ -166,7 +166,7 @@ poetry run python manage.py runserver
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/seu-usuario/lacrei-saude-api.git
+git clone https://github.com/CarlosAlbertoFurtado/lacrei-saude-api.git
 cd lacrei-saude-api
 
 # 2. Configurar variáveis de ambiente
