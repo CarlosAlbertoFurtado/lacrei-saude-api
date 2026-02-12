@@ -1,0 +1,23 @@
+[run]
+source = .
+omit =
+    */migrations/*
+    */tests/*
+    */test_*
+    manage.py
+    core/settings/*
+    core/wsgi.py
+    core/asgi.py
+    .venv/*
+    venv/*
+
+[report]
+show_missing = true
+fail_under = 80
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__
+    raise NotImplementedError
+    pass
+    except ImportError
