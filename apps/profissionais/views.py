@@ -4,6 +4,11 @@ Views para o app de Profissionais da Saúde.
 Decisão técnica: Utiliza ModelViewSet para CRUD completo com mínimo
 de código, mantendo consistência e boa prática DRF.
 A listagem usa um serializer mais leve para performance.
+
+Segurança:
+- Autenticação JWT obrigatória em todos os endpoints
+- Permissão IsAuthenticated para controle de acesso
+- Logging de todas as operações CRUD
 """
 
 import logging
@@ -11,7 +16,9 @@ import logging
 from django.db.models import Count
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status, viewsets
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Profissional
 from .serializers import ProfissionalListSerializer, ProfissionalSerializer
@@ -63,6 +70,10 @@ class ProfissionalViewSet(viewsets.ModelViewSet):
     - PATCH  /api/profissionais/{id}/     - Atualizar parcial
     - DELETE /api/profissionais/{id}/     - Excluir
     """
+
+    # Autenticação e Permissões explícitas
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     queryset = Profissional.objects.all()
     filterset_fields = ["profissao"]

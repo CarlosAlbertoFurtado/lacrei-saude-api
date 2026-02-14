@@ -3,6 +3,11 @@ Views para o app de Consultas Médicas.
 
 Decisão técnica: Além do CRUD padrão, implementa uma action customizada
 para buscar consultas por profissional (requisito do desafio).
+
+Segurança:
+- Autenticação JWT obrigatória em todos os endpoints
+- Permissão IsAuthenticated para controle de acesso
+- Logging de todas as operações CRUD
 """
 
 import logging
@@ -11,7 +16,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Consulta
 from .serializers import ConsultaListSerializer, ConsultaSerializer
@@ -64,6 +71,10 @@ class ConsultaViewSet(viewsets.ModelViewSet):
     - DELETE /api/consultas/{id}/                         - Excluir
     - GET    /api/consultas/por-profissional/{prof_id}/   - Buscar por profissional
     """
+
+    # Autenticação e Permissões explícitas
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     queryset = Consulta.objects.select_related("profissional").all()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

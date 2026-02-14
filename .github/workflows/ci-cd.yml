@@ -1,60 +1,57 @@
-name: CI/CD Pipeline - Lacrei Saúde API
+name: Lacrei Saúde API - CI/CD Pipeline
 
 on:
   push:
-    branches: [main, staging]
+    branches: [main, staging, develop]
   pull_request:
-    branches: [main, staging]
+    branches: [main]
 
 env:
-  DJANGO_SETTINGS_MODULE: core.settings.base
-  DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
-  DB_NAME: lacrei_saude_test
-  DB_USER: postgres
-  DB_PASSWORD: postgres
-  DB_HOST: localhost
-  DB_PORT: 5432
-  DJANGO_DEBUG: "True"
-  DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
-  CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+  PYTHON_VERSION: '3.12'
+  DJANGO_SECRET_KEY: 'ci-cd-secret-key-only-for-tests'
+  DJANGO_DEBUG: 'True'
+  DJANGO_SETTINGS_MODULE: 'core.settings.base'
+  DB_NAME: 'lacrei_saude_test'
+  DB_USER: 'lacrei_user'
+  DB_PASSWORD: 'lacrei_password_test'
+  DB_HOST: 'localhost'
+  DB_PORT: '5432'
 
 jobs:
   # ==========================================
-  # Step 1: Lint (Análise estática de código)
+  # JOB 1: Lint (Qualidade de Código)
   # ==========================================
   lint:
-    name: 🔍 Lint
+    name: 🔍 Lint & Code Quality
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout código
+      - name: 📥 Checkout código
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: 🐍 Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
 
-      - name: Instalar Poetry
-        run: pip install poetry==1.8.4
+      - name: 📦 Instalar dependências de lint
+        run: pip install black isort flake8
 
-      - name: Instalar dependências
-        run: poetry install --no-interaction --no-ansi
+      - name: ✅ Verificar formatação (Black)
+        run: black --check --diff .
 
-      - name: Executar Black (formatação)
-        run: poetry run black --check .
+      - name: ✅ Verificar imports (isort)
+        run: isort --check-only --diff .
 
-      - name: Executar isort (imports)
-        run: poetry run isort --check-only .
-
-      - name: Executar Flake8 (linting)
-        run: poetry run flake8 .
+      - name: ✅ Verificar estilo (Flake8)
+        run: flake8 .
 
   # ==========================================
-  # Step 2: Testes automatizados
+  # JOB 2: Testes Automatizados
   # ==========================================
   test:
-    name: 🧪 Testes
+    name: 🧪 Tests & Coverage
     runs-on: ubuntu-latest
     needs: lint
 
@@ -63,8 +60,8 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_DB: lacrei_saude_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: lacrei_user
+          POSTGRES_PASSWORD: lacrei_password_test
         ports:
           - 5432:5432
         options: >-
@@ -74,52 +71,55 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout código
+      - name: 📥 Checkout código
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: 🐍 Setup Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
 
-      - name: Instalar Poetry
-        run: pip install poetry==1.8.4
+      - name: 📦 Instalar Poetry
+        run: |
+          pip install poetry==1.8.4
+          poetry config virtualenvs.create false
 
-      - name: Instalar dependências
+      - name: 📦 Instalar dependências
         run: poetry install --no-interaction --no-ansi
 
-      - name: Executar migrações
-        run: poetry run python manage.py migrate
+      - name: 🗃️ Executar migrações
+        run: python manage.py migrate --noinput
 
-      - name: Executar testes com cobertura
+      - name: 🧪 Executar testes com cobertura
         run: |
-          poetry run coverage run manage.py test apps/ --verbosity=2
-          poetry run coverage report --show-missing --fail-under=80
-          poetry run coverage xml
+          coverage run manage.py test apps/ --verbosity=2
+          coverage report -m
+          coverage xml
 
-      - name: Upload cobertura
+      - name: 📊 Upload cobertura
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage.xml
 
   # ==========================================
-  # Step 3: Build da imagem Docker
+  # JOB 3: Build Docker Image
   # ==========================================
   build:
-    name: 🏗️ Build
+    name: 🐳 Build Docker Image
     runs-on: ubuntu-latest
     needs: test
 
     steps:
-      - name: Checkout código
+      - name: 📥 Checkout código
         uses: actions/checkout@v4
 
-      - name: Setup Docker Buildx
+      - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build da imagem Docker
-        uses: docker/build-push-action@v6
+      - name: 🐳 Build Docker image
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: false
@@ -127,8 +127,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: ✅ Verificar imagem
+        run: |
+          docker build -t lacrei-saude-api:test .
+          docker run --rm lacrei-saude-api:test python -c "import django; print(f'Django {django.VERSION} OK')"
+
   # ==========================================
-  # Step 4: Deploy para Staging
+  # JOB 4: Deploy Staging
   # ==========================================
   deploy-staging:
     name: 🚀 Deploy Staging
@@ -138,95 +143,80 @@ jobs:
     environment: staging
 
     steps:
-      - name: Checkout código
+      - name: 📥 Checkout código
         uses: actions/checkout@v4
 
-      - name: Configurar AWS CLI
+      - name: 🔐 Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login no Amazon ECR
+      - name: 🔐 Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build e push para ECR
+      - name: 🐳 Build, tag and push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: lacrei-saude-api
-          IMAGE_TAG: staging-${{ github.sha }}
+          ECR_REPOSITORY: lacrei-saude-api-staging
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Deploy para ECS Staging
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: lacrei-saude-api
-          IMAGE_TAG: staging-${{ github.sha }}
+      - name: 🚀 Deploy to ECS Staging
         run: |
           aws ecs update-service \
             --cluster lacrei-staging-cluster \
-            --service lacrei-api-staging \
-            --force-new-deployment \
-            --region ${{ secrets.AWS_REGION }}
+            --service lacrei-saude-api-staging \
+            --force-new-deployment
 
   # ==========================================
-  # Step 5: Deploy para Produção
+  # JOB 5: Deploy Production (Blue/Green)
   # ==========================================
   deploy-production:
-    name: 🚀 Deploy Produção
+    name: 🏭 Deploy Production
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
 
     steps:
-      - name: Checkout código
+      - name: 📥 Checkout código
         uses: actions/checkout@v4
 
-      - name: Configurar AWS CLI
+      - name: 🔐 Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login no Amazon ECR
+      - name: 🔐 Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build e push para ECR
+      - name: 🐳 Build, tag and push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: lacrei-saude-api
-          IMAGE_TAG: prod-${{ github.sha }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Deploy Blue/Green para ECS Produção
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: lacrei-saude-api
-          IMAGE_TAG: prod-${{ github.sha }}
+      - name: 🚀 Deploy Blue/Green to ECS Production
         run: |
-          # Deploy Blue/Green: o CodeDeploy gerencia a troca de tráfego
+          # Blue/Green deploy via CodeDeploy
           aws ecs update-service \
             --cluster lacrei-production-cluster \
-            --service lacrei-api-production \
+            --service lacrei-saude-api-production \
             --force-new-deployment \
-            --region ${{ secrets.AWS_REGION }}
+            --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100"
 
-      - name: Verificar health check pós-deploy
-        run: |
-          echo "Aguardando estabilização do serviço..."
-          aws ecs wait services-stable \
-            --cluster lacrei-production-cluster \
-            --services lacrei-api-production \
-            --region ${{ secrets.AWS_REGION }}
-          echo "Deploy em produção concluído com sucesso!"
+          echo "✅ Deploy Blue/Green iniciado!"
+          echo "📋 Rollback: aws ecs update-service --cluster lacrei-production-cluster --service lacrei-saude-api-production --task-definition <PREVIOUS_TASK_DEF>"

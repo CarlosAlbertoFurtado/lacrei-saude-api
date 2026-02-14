@@ -3,6 +3,7 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=utf-8
 
 # Set work directory
 WORKDIR /app
@@ -10,9 +11,9 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        libpq-dev \
-        curl \
+    build-essential \
+    libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
@@ -28,15 +29,24 @@ RUN poetry config virtualenvs.create false \
 # Copy the project
 COPY . /app/
 
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 # Collect static files
 RUN python manage.py collectstatic --noinput 2>/dev/null || true
+
+# Create logs directory
+RUN mkdir -p /app/logs
 
 # Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/api/health/ || exit 1
 
-# Run with gunicorn
+# Entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command: gunicorn
 CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]

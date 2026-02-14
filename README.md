@@ -7,39 +7,47 @@
 [![CI/CD Pipeline](https://github.com/CarlosAlbertoFurtado/lacrei-saude-api/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/CarlosAlbertoFurtado/lacrei-saude-api/actions)
 [![Python](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
 [![Django](https://img.shields.io/badge/django-5.1-green.svg)](https://djangoproject.com)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
 
 ## 📋 Índice
 
-- [Sobre o Projeto](#-sobre-o-projeto)
-- [Tecnologias](#-tecnologias)
-- [Arquitetura](#-arquitetura)
-- [Setup Local](#-setup-local)
-- [Setup com Docker](#-setup-com-docker)
-- [Executando os Testes](#-executando-os-testes)
-- [Documentação da API](#-documentação-da-api)
-- [Endpoints](#-endpoints)
-- [Segurança](#-segurança)
-- [Deploy (CI/CD)](#-deploy-cicd)
-- [Proposta de Rollback](#-proposta-de-rollback)
-- [Integração com Assas](#-integração-com-assas)
-- [Justificativas Técnicas](#-justificativas-técnicas)
-- [Erros Encontrados e Melhorias](#-erros-encontrados-e-melhorias)
+1. [Sobre o Projeto](#-sobre-o-projeto)
+2. [Tecnologias](#-tecnologias)
+3. [Arquitetura](#-arquitetura)
+4. [Setup Local](#-setup-local)
+5. [Setup com Docker](#-setup-com-docker)
+6. [Executando os Testes](#-executando-os-testes)
+7. [Documentação da API](#-documentação-da-api)
+8. [Endpoints](#-endpoints)
+9. [Autenticação JWT](#-autenticação-jwt)
+10. [Segurança](#-segurança)
+11. [Logging & Monitoramento](#-logging--monitoramento)
+12. [CI/CD Pipeline](#-cicd-pipeline)
+13. [Deploy & Rollback](#-deploy--rollback)
+14. [Integração Assas](#-integração-assas)
+15. [Justificativas Técnicas](#-justificativas-técnicas)
 
 ---
 
 ## 🎯 Sobre o Projeto
 
-API RESTful para gerenciamento de consultas médicas, incluindo:
+API REST para gerenciamento de profissionais da saúde e consultas médicas, desenvolvida como parte do desafio técnico Lacrei Saúde.
 
-- **CRUD completo** de profissionais da saúde
-- **CRUD completo** de consultas médicas
-- **Busca de consultas** pelo ID do profissional
-- **Autenticação JWT** para proteção dos endpoints
-- **Documentação interativa** via Swagger/Redoc
-- **Proposta de integração** com Assas (gateway de pagamentos)
+### Funcionalidades
+- ✅ **CRUD Profissionais** – Cadastro, listagem, atualização e exclusão de profissionais
+- ✅ **CRUD Consultas** – Cadastro, listagem, atualização e exclusão de consultas
+- ✅ **Busca por Profissional** – Endpoint customizado para consultas de um profissional específico
+- ✅ **Autenticação JWT** – Tokens de acesso e refresh com SimpleJWT
+- ✅ **Permissões** – Controle de acesso em todos os endpoints
+- ✅ **CORS** – Configurado com django-cors-headers
+- ✅ **Proteção XSS** – Sanitização de inputs com Bleach
+- ✅ **SQL Injection** – Protegido nativamente pelo Django ORM
+- ✅ **Logs** – Acesso e erro com middleware customizado + arquivo rotativo
+- ✅ **Testes** – 42 testes automatizados com APITestCase
+- ✅ **Docker** – Containerização completa com PostgreSQL
+- ✅ **CI/CD** – Pipeline GitHub Actions (lint, test, build, deploy)
+- ✅ **Documentação** – Swagger UI e ReDoc automáticos
 
 ---
 
@@ -49,16 +57,16 @@ API RESTful para gerenciamento de consultas médicas, incluindo:
 |---|---|---|
 | **Python** | 3.12 | Linguagem principal |
 | **Django** | 5.1 | Framework web |
-| **Django REST Framework** | 3.15 | API RESTful |
+| **Django REST Framework** | 3.15 | API REST |
+| **SimpleJWT** | 5.5 | Autenticação JWT |
 | **PostgreSQL** | 16 | Banco de dados |
+| **Docker** | - | Containerização |
 | **Poetry** | 1.8 | Gerenciamento de dependências |
-| **Docker** + **Docker Compose** | Latest | Containerização |
+| **Gunicorn** | 22 | Servidor WSGI (produção) |
 | **GitHub Actions** | - | CI/CD Pipeline |
-| **SimpleJWT** | 5.3 | Autenticação JWT |
-| **drf-spectacular** | 0.28 | Documentação OpenAPI (Swagger/Redoc) |
-| **Bleach** | 6.2 | Sanitização de inputs |
-| **WhiteNoise** | 6.8 | Servir arquivos estáticos |
-| **Gunicorn** | 23.0 | WSGI Server (produção) |
+| **drf-spectacular** | 0.29 | Documentação OpenAPI |
+| **Bleach** | 6.3 | Sanitização de inputs |
+| **WhiteNoise** | 6.11 | Arquivos estáticos |
 
 ---
 
@@ -68,47 +76,42 @@ API RESTful para gerenciamento de consultas médicas, incluindo:
 lacrei-saude-api/
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml              # Pipeline CI/CD
+│       └── ci-cd.yml            # Pipeline CI/CD (lint, test, build, deploy)
 ├── apps/
-│   ├── profissionais/             # App de Profissionais
-│   │   ├── models.py              # Modelo Profissional
-│   │   ├── serializers.py         # Serializers + validação + sanitização
-│   │   ├── views.py               # ViewSet CRUD
-│   │   ├── urls.py                # Rotas
-│   │   ├── tests.py               # Testes APITestCase
-│   │   └── admin.py               # Admin Django
-│   └── consultas/                 # App de Consultas
-│       ├── models.py              # Modelo Consulta (FK → Profissional)
-│       ├── serializers.py         # Serializers + validação
-│       ├── views.py               # ViewSet CRUD + busca por profissional
-│       ├── urls.py                # Rotas
-│       ├── tests.py               # Testes APITestCase
-│       ├── admin.py               # Admin Django
+│   ├── profissionais/           # App: Profissionais da Saúde
+│   │   ├── models.py            #   Modelo com campos obrigatórios + índices
+│   │   ├── serializers.py       #   Validação + sanitização de inputs
+│   │   ├── views.py             #   ViewSet com JWT + permissões + logging
+│   │   ├── tests.py             #   21 testes automatizados
+│   │   ├── urls.py              #   Rotas REST
+│   │   └── admin.py             #   Admin Django
+│   └── consultas/               # App: Consultas Médicas
+│       ├── models.py            #   Modelo com FK para Profissional (PROTECT)
+│       ├── serializers.py       #   Validação de data + sanitização
+│       ├── views.py             #   ViewSet com busca por profissional
+│       ├── tests.py             #   21 testes automatizados
+│       ├── urls.py              #   Rotas REST
+│       ├── admin.py             #   Admin Django
 │       └── services/
-│           └── assas_integration.py  # Proposta de integração Assas
+│           └── assas_integration.py  # Proposta integração Assas
 ├── core/
 │   ├── settings/
-│   │   ├── base.py                # Settings base (compartilhado)
-│   │   ├── staging.py             # Settings staging
-│   │   └── production.py          # Settings produção
+│   │   ├── base.py              # Settings base (JWT, CORS, logging, DRF)
+│   │   ├── staging.py           # SSL + segurança para staging
+│   │   └── production.py        # HSTS + segurança máxima
 │   ├── middleware/
-│   │   └── logging_middleware.py   # Middleware de logging
+│   │   └── logging_middleware.py # Logs de acesso (method, path, user, IP, duration)
 │   ├── utils/
-│   │   └── sanitization.py        # Utilitários de sanitização
-│   ├── exceptions.py              # Handler de exceções customizado
-│   ├── views.py                   # Health check
-│   ├── urls.py                    # URLs root
-│   ├── wsgi.py                    # WSGI
-│   └── asgi.py                    # ASGI
-├── logs/                          # Logs de acesso e erro
-├── Dockerfile                     # Imagem Docker
-├── docker-compose.yml             # Orquestração de containers
-├── pyproject.toml                 # Dependências (Poetry)
-├── manage.py                      # Django CLI
-├── .env.example                   # Template de variáveis de ambiente
-├── .flake8                        # Config do linter
-├── .coveragerc                    # Config de cobertura de testes
-└── README.md                      # Este arquivo
+│   │   └── sanitization.py      # Utilitário de sanitização anti-XSS
+│   ├── exceptions.py            # Handler de erros centralizado
+│   ├── views.py                 # Health check endpoint
+│   └── urls.py                  # Rotas principais (JWT, Swagger, apps)
+├── Dockerfile                   # Build da imagem Docker
+├── docker-compose.yml           # PostgreSQL + API + dev + testes
+├── entrypoint.sh                # Script de inicialização Docker
+├── pyproject.toml               # Dependências (Poetry)
+├── .env.example                 # Template de variáveis de ambiente
+└── manage.py
 ```
 
 ---
@@ -116,10 +119,9 @@ lacrei-saude-api/
 ## 🚀 Setup Local
 
 ### Pré-requisitos
-
 - Python 3.12+
-- Poetry 1.8+
-- PostgreSQL 16+
+- PostgreSQL 16+ (ou usar SQLite para testes rápidos)
+- Poetry
 
 ### Passo a passo
 
@@ -129,38 +131,31 @@ git clone https://github.com/CarlosAlbertoFurtado/lacrei-saude-api.git
 cd lacrei-saude-api
 
 # 2. Instalar dependências com Poetry
+pip install poetry
 poetry install
 
 # 3. Configurar variáveis de ambiente
 cp .env.example .env
-# Edite o .env com as credenciais do seu PostgreSQL local
+# Editar .env com suas credenciais de banco de dados
 
-# 4. Criar banco de dados (PostgreSQL deve estar rodando)
-# No psql:
-# CREATE DATABASE lacrei_saude;
-# CREATE USER lacrei_user WITH PASSWORD 'sua_senha';
-# GRANT ALL PRIVILEGES ON DATABASE lacrei_saude TO lacrei_user;
+# 4. Executar migrações
+python manage.py migrate
 
-# 5. Executar migrações
-poetry run python manage.py migrate
+# 5. Criar superusuário (para obter token JWT)
+python manage.py createsuperuser
 
-# 6. Criar superusuário (para acessar o admin e gerar tokens)
-poetry run python manage.py createsuperuser
-
-# 7. Rodar o servidor de desenvolvimento
-poetry run python manage.py runserver
-
-# A API estará disponível em http://localhost:8000
+# 6. Iniciar o servidor
+python manage.py runserver
 ```
+
+A API estará disponível em `http://localhost:8000`
 
 ---
 
 ## 🐳 Setup com Docker
 
 ### Pré-requisitos
-
-- Docker 24+
-- Docker Compose v2+
+- Docker e Docker Compose
 
 ### Início rápido
 
@@ -172,28 +167,25 @@ cd lacrei-saude-api
 # 2. Configurar variáveis de ambiente
 cp .env.example .env
 
-# 3. Subir containers (PostgreSQL + API)
+# 3. Subir os containers (PostgreSQL + API)
 docker compose up --build -d
 
-# 4. Criar superusuário
-docker compose exec web python manage.py createsuperuser
-
-# A API estará disponível em http://localhost:8000
+# A API estará em http://localhost:8000
+# Swagger UI: http://localhost:8000/api/docs/
+# Superusuário automático: admin / admin123
 ```
 
 ### Modo desenvolvimento (com hot reload)
 
 ```bash
-docker compose --profile dev up web-dev db -d
+docker compose --profile dev up --build web-dev
 ```
 
 ### Parar containers
 
 ```bash
-docker compose down
-
-# Para remover volumes (limpar banco)
-docker compose down -v
+docker compose down          # Manter dados
+docker compose down -v       # Limpar tudo
 ```
 
 ---
@@ -203,49 +195,87 @@ docker compose down -v
 ### Local (com Poetry)
 
 ```bash
-# Rodar todos os testes
-poetry run python manage.py test apps/ --verbosity=2
+# Executar todos os testes
+python manage.py test apps/ --verbosity=2
 
 # Com cobertura de código
-poetry run coverage run manage.py test apps/ --verbosity=2
-poetry run coverage report --show-missing
-
-# Gerar HTML da cobertura
-poetry run coverage html
-# Abrir htmlcov/index.html no navegador
+coverage run manage.py test apps/ --verbosity=2
+coverage report -m
 ```
 
 ### Com Docker
 
 ```bash
-docker compose exec web python manage.py test apps/ --verbosity=2
+docker compose --profile test run --rm test
 ```
 
 ### Cobertura dos testes
 
-Os testes cobrem:
+| App | Cenários testados | Total |
+|---|---|---|
+| **Profissionais** | CRUD, validação, sanitização, filtros, auth, conflito | 21 testes |
+| **Consultas** | CRUD, validação, data passada, busca por profissional, auth | 21 testes |
+| **Total** | **Cobertura completa dos requisitos** | **42 testes** |
 
-| Área | Testes |
-|---|---|
-| CRUD Profissionais | Criar, listar, detalhar, atualizar (PUT/PATCH), excluir |
-| CRUD Consultas | Criar, listar, detalhar, atualizar (PUT/PATCH), excluir |
-| Busca por profissional | Consultas filtradas pelo ID do profissional |
-| Erros de validação | Campos ausentes, dados inválidos, data no passado |
-| Sanitização | Remoção de HTML/XSS de inputs |
-| Autenticação | Acesso negado sem token, token inválido |
-| Regras de negócio | Exclusão de profissional com consultas vinculadas |
+#### Detalhamento dos testes
+
+**Profissionais (`apps/profissionais/tests.py`)**:
+- `test_criar_profissional_com_dados_validos` – Criação com sucesso
+- `test_criar_profissional_sem_nome` – Validação campo obrigatório
+- `test_criar_profissional_sem_profissao` – Validação campo obrigatório
+- `test_criar_profissional_sem_endereco` – Validação campo obrigatório
+- `test_criar_profissional_sem_contato` – Validação campo obrigatório
+- `test_criar_profissional_com_nome_curto` – Validação comprimento mínimo
+- `test_criar_profissional_com_xss` – Sanitização anti-XSS (Bleach)
+- `test_criar_profissional_com_campos_html` – Sanitização HTML
+- `test_listar_profissionais` – Listagem paginada
+- `test_detalhar_profissional` – Busca por ID
+- `test_detalhar_profissional_inexistente` – Retorna 404
+- `test_filtrar_por_profissao` – Filtro por profissão
+- `test_buscar_por_nome` – Busca textual
+- `test_atualizar_profissional_completo` – PUT completo
+- `test_atualizar_profissional_parcial` – PATCH parcial
+- `test_atualizar_profissional_inexistente` – Retorna 404
+- `test_excluir_profissional` – DELETE com sucesso
+- `test_excluir_profissional_com_consultas` – Proteção de integridade (409)
+- `test_acessar_sem_token` – Retorna 401 (autenticação obrigatória)
+- `test_acessar_com_token_invalido` – Retorna 401
+- `test_acessar_com_token_valido` – Retorna 200
+
+**Consultas (`apps/consultas/tests.py`)**:
+- `test_criar_consulta_com_dados_validos` – Criação com sucesso
+- `test_criar_consulta_sem_profissional` – Validação campo obrigatório
+- `test_criar_consulta_sem_data` – Validação campo obrigatório
+- `test_criar_consulta_sem_observacoes` – Campo opcional funciona
+- `test_criar_consulta_com_data_no_passado` – Validação de data futura
+- `test_criar_consulta_com_profissional_inexistente` – Validação FK
+- `test_criar_consulta_com_xss` – Sanitização anti-XSS (Bleach)
+- `test_criar_consulta_com_html` – Sanitização HTML
+- `test_listar_consultas` – Listagem paginada com detalhes profissional
+- `test_detalhar_consulta` – Busca por ID
+- `test_detalhar_consulta_inexistente` – Retorna 404
+- `test_filtrar_consultas_por_profissional_id` – Filtro por FK
+- `test_buscar_consultas_por_profissional` – Action customizada
+- `test_buscar_consultas_por_profissional_inexistente` – Retorna 404
+- `test_atualizar_consulta_completa` – PUT completo
+- `test_atualizar_consulta_parcial` – PATCH parcial
+- `test_atualizar_consulta_inexistente` – Retorna 404
+- `test_excluir_consulta` – DELETE com sucesso
+- `test_excluir_consulta_inexistente` – Retorna 404
+- `test_acessar_sem_token` – Retorna 401 (autenticação obrigatória)
+- `test_acessar_com_token_valido` – Retorna 200
 
 ---
 
 ## 📖 Documentação da API
 
-Após iniciar o servidor, acesse:
+| Interface | URL | Descrição |
+|---|---|---|
+| **Swagger UI** | `http://localhost:8000/api/docs/` | Documentação interativa |
+| **ReDoc** | `http://localhost:8000/api/redoc/` | Documentação alternativa |
+| **OpenAPI JSON** | `http://localhost:8000/api/schema/` | Schema OpenAPI 3.0 |
 
-| URL | Descrição |
-|---|---|
-| `http://localhost:8000/api/docs/` | **Swagger UI** - Documentação interativa |
-| `http://localhost:8000/api/redoc/` | **ReDoc** - Documentação alternativa |
-| `http://localhost:8000/api/schema/` | **OpenAPI Schema** - JSON/YAML |
+A documentação é gerada automaticamente pelo **drf-spectacular** com base nos serializers e viewsets.
 
 ---
 
@@ -253,79 +283,108 @@ Após iniciar o servidor, acesse:
 
 ### Autenticação (JWT)
 
-```
-POST /api/auth/token/          → Obter token (login)
-POST /api/auth/token/refresh/  → Renovar token
-POST /api/auth/token/verify/   → Verificar token
-```
-
-**Exemplo de login:**
-```bash
-curl -X POST http://localhost:8000/api/auth/token/ \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "sua_senha"}'
-```
-
-**Resposta:**
-```json
-{
-  "access": "eyJ0eXAi...",
-  "refresh": "eyJ0eXAi..."
-}
-```
-
-**Usando o token:**
-```bash
-curl -X GET http://localhost:8000/api/profissionais/ \
-  -H "Authorization: Bearer eyJ0eXAi..."
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `POST` | `/api/auth/token/` | Obter par de tokens (access + refresh) |
+| `POST` | `/api/auth/token/refresh/` | Renovar token de acesso |
+| `POST` | `/api/auth/token/verify/` | Verificar validade do token |
 
 ### Profissionais da Saúde
 
-```
-GET    /api/profissionais/          → Listar todos (paginado)
-POST   /api/profissionais/          → Cadastrar novo
-GET    /api/profissionais/{id}/     → Detalhar
-PUT    /api/profissionais/{id}/     → Atualizar completo
-PATCH  /api/profissionais/{id}/     → Atualizar parcial
-DELETE /api/profissionais/{id}/     → Excluir
-```
-
-**Exemplo: Criar profissional**
-```bash
-curl -X POST http://localhost:8000/api/profissionais/ \
-  -H "Authorization: Bearer SEU_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nome_social": "Dra. Maria Silva",
-    "profissao": "Medicina - Clínica Geral",
-    "endereco": "Rua das Flores, 123 - São Paulo, SP",
-    "contato": "maria.silva@email.com"
-  }'
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/api/profissionais/` | Listar todos (paginado) |
+| `POST` | `/api/profissionais/` | Cadastrar novo |
+| `GET` | `/api/profissionais/{id}/` | Detalhar |
+| `PUT` | `/api/profissionais/{id}/` | Atualizar completo |
+| `PATCH` | `/api/profissionais/{id}/` | Atualizar parcial |
+| `DELETE` | `/api/profissionais/{id}/` | Excluir |
 
 ### Consultas Médicas
 
-```
-GET    /api/consultas/                                    → Listar todas (paginado)
-POST   /api/consultas/                                    → Agendar nova
-GET    /api/consultas/{id}/                               → Detalhar
-PUT    /api/consultas/{id}/                               → Atualizar completa
-PATCH  /api/consultas/{id}/                               → Atualizar parcial
-DELETE /api/consultas/{id}/                               → Cancelar
-GET    /api/consultas/por-profissional/{profissional_id}/ → Buscar por profissional
-```
-
-**Exemplo: Buscar consultas por profissional**
-```bash
-curl -X GET http://localhost:8000/api/consultas/por-profissional/1/ \
-  -H "Authorization: Bearer SEU_TOKEN"
-```
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/api/consultas/` | Listar todas (paginado) |
+| `POST` | `/api/consultas/` | Cadastrar nova |
+| `GET` | `/api/consultas/{id}/` | Detalhar |
+| `PUT` | `/api/consultas/{id}/` | Atualizar completa |
+| `PATCH` | `/api/consultas/{id}/` | Atualizar parcial |
+| `DELETE` | `/api/consultas/{id}/` | Excluir |
+| `GET` | `/api/consultas/por-profissional/{prof_id}/` | Buscar por profissional |
 
 ### Health Check
 
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/api/health/` | Verifica saúde da API e banco de dados |
+
+---
+
+## 🔑 Autenticação JWT
+
+Todos os endpoints (exceto `/api/auth/` e `/api/health/`) exigem autenticação JWT.
+
+### Como obter um token
+
+```bash
+# 1. Obter o token (troque admin/admin123 pelas suas credenciais)
+curl -X POST http://localhost:8000/api/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Resposta:
+# {
+#   "access": "eyJhbGciOiJIUzI1NiIs...",
+#   "refresh": "eyJhbGciOiJIUzI1NiIs..."
+# }
 ```
-GET /api/health/ → Verificar status da aplicação (sem autenticação)
+
+### Usando o token nas requisições
+
+```bash
+# 2. Usar o token de acesso
+curl -X GET http://localhost:8000/api/profissionais/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+```
+
+### Renovar token expirado
+
+```bash
+# 3. Renovar com o refresh token
+curl -X POST http://localhost:8000/api/auth/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "eyJhbGciOiJIUzI1NiIs..."}'
+```
+
+### Configuração JWT
+
+| Parâmetro | Valor | Configurável via |
+|---|---|---|
+| Token de acesso expira em | 30 minutos | `JWT_ACCESS_TOKEN_LIFETIME_MINUTES` |
+| Token de refresh expira em | 7 dias | `JWT_REFRESH_TOKEN_LIFETIME_DAYS` |
+| Rotação de refresh | Ativada | `ROTATE_REFRESH_TOKENS` |
+| Tipo do header | `Bearer` | `AUTH_HEADER_TYPES` |
+
+### Implementação no código
+
+```python
+# apps/profissionais/views.py  (e apps/consultas/views.py)
+class ProfissionalViewSet(viewsets.ModelViewSet):
+    # Autenticação e Permissões explícitas
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    ...
+
+# core/settings/base.py
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    ...
+}
 ```
 
 ---
@@ -334,239 +393,297 @@ GET /api/health/ → Verificar status da aplicação (sem autenticação)
 
 ### Implementações
 
-| Proteção | Implementação |
-|---|---|
-| **SQL Injection** | Django ORM com queries parametrizadas (proteção nativa) |
-| **XSS** | Sanitização de inputs com Bleach em todos os serializers |
-| **CORS** | Configurado via `django-cors-headers` com origens permitidas |
-| **Autenticação** | JWT (SimpleJWT) com rotation de refresh tokens |
-| **Rate Limiting** | Throttling configurado (50 req/h anônimo, 200 req/h autenticado) |
-| **HTTPS** | Forçado em staging/produção via HSTS |
-| **Headers de Segurança** | X-Frame-Options: DENY, X-Content-Type-Options: nosniff |
-| **Logging** | Middleware de logging para todas as requisições |
-| **Validação de dados** | Validação em múltiplas camadas (serializer + model) |
+| Proteção | Implementação | Arquivo |
+|---|---|---|
+| **Autenticação JWT** | `JWTAuthentication` explícito em cada ViewSet | `views.py` |
+| **Permissões** | `IsAuthenticated` em todos os endpoints protegidos | `views.py` |
+| **CORS** | `django-cors-headers` com origens configuráveis | `settings/base.py` |
+| **Sanitização XSS** | `bleach.clean()` em todos os campos de texto | `serializers.py` |
+| **SQL Injection** | Django ORM (queries parametrizadas nativas) | `models.py` |
+| **Rate Limiting** | 50/h anônimo, 200/h autenticado | `settings/base.py` |
+| **Security Headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options` | `settings/base.py` |
+| **HTTPS** | `SECURE_SSL_REDIRECT` em staging/production | `settings/staging.py` |
+| **HSTS** | 1 ano com subdomínios em produção | `settings/production.py` |
+
+### Configuração CORS
+
+```python
+# core/settings/base.py
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000",
+    cast=Csv(),
+)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+CORS_ALLOW_HEADERS = [
+    "accept", "authorization", "content-type", "origin", ...
+]
+```
 
 ### Proteção contra SQL Injection
 
-O Django ORM **nativamente** utiliza queries parametrizadas, prevenindo SQL Injection:
+O Django ORM é utilizado em **todas** as queries, garantindo parametrização automática:
 
 ```python
-# ✅ Seguro - Django ORM usa queries parametrizadas
-Profissional.objects.filter(nome_social=user_input)
+# Seguro - Django ORM gera query parametrizada
+Profissional.objects.filter(nome_social__icontains=search_term)
 
-# ❌ Nunca usado - Raw queries com interpolação de strings
-Profissional.objects.raw(f"SELECT * FROM ... WHERE name = '{user_input}'")
+# Nunca usamos SQL raw sem parametrização
 ```
 
 ---
 
-## 🚀 Deploy (CI/CD)
+## 📊 Logging & Monitoramento
 
-### Pipeline GitHub Actions
+### Middleware de Logging (`core/middleware/logging_middleware.py`)
 
-O pipeline CI/CD (``.github/workflows/ci-cd.yml``) segue os steps obrigatórios:
-
-```
-1. 🔍 Lint      → Black + isort + Flake8
-2. 🧪 Testes    → APITestCase com cobertura ≥ 80%
-3. 🏗️ Build     → Docker image build
-4. 🚀 Deploy    → Staging (branch staging) ou Produção (branch main)
-```
-
-### Ambientes
-
-| Ambiente | Branch | URL | Settings |
-|---|---|---|---|
-| **Desenvolvimento** | `develop` | `localhost:8000` | `core.settings.base` |
-| **Staging** | `staging` | `staging.lacrei-saude.com.br` | `core.settings.staging` |
-| **Produção** | `main` | `api.lacrei-saude.com.br` | `core.settings.production` |
-
-### Infraestrutura AWS
+Todas as requisições são logadas automaticamente:
 
 ```
-┌─────────────────────────────────────────────┐
-│                  AWS Cloud                    │
-│                                               │
-│  ┌─────────┐    ┌─────────────┐    ┌──────┐  │
-│  │   ECR   │───▶│   ECS       │───▶│ RDS  │  │
-│  │ (Images)│    │ (Fargate)   │    │(PgSQL)│  │
-│  └─────────┘    └──────┬──────┘    └──────┘  │
-│                        │                      │
-│                 ┌──────┴──────┐               │
-│                 │     ALB     │               │
-│                 │ (Load Bal.) │               │
-│                 └─────────────┘               │
-└─────────────────────────────────────────────┘
+[2024-01-15 10:30:00] INFO core.middleware logging_middleware POST /api/profissionais/ | Status: 201 | User: admin | IP: 127.0.0.1 | Duration: 0.045s
+[2024-01-15 10:31:00] WARNING core.middleware logging_middleware GET /api/profissionais/999/ | Status: 404 | User: admin | IP: 127.0.0.1 | Duration: 0.003s
+[2024-01-15 10:32:00] ERROR core.middleware logging_middleware POST /api/consultas/ | Status: 500 | User: admin | IP: 127.0.0.1 | Duration: 0.001s
 ```
 
-- **ECR**: Armazena imagens Docker
-- **ECS Fargate**: Executa containers serverless
-- **RDS PostgreSQL**: Banco de dados gerenciado
-- **ALB**: Balanceamento de carga com health checks
-- **CloudWatch**: Monitoramento e logs
+### Informações logadas
 
-### Secrets necessários (GitHub)
+| Campo | Descrição |
+|---|---|
+| **Timestamp** | Data/hora da requisição |
+| **Level** | INFO (2xx), WARNING (4xx), ERROR (5xx) |
+| **Method** | GET, POST, PUT, PATCH, DELETE |
+| **Path** | URL do endpoint acessado |
+| **Status** | Código HTTP da resposta |
+| **User** | Usuário autenticado ou "anonymous" |
+| **IP** | Endereço IP do cliente |
+| **Duration** | Tempo de processamento da requisição |
 
-```
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-AWS_REGION
-DJANGO_SECRET_KEY
-DB_PASSWORD
+### Arquivos de Log
+
+| Arquivo | Conteúdo | Configuração |
+|---|---|---|
+| `logs/access.log` | Todos os acessos (INFO+) | Rotação 10MB, 5 backups |
+| `logs/error.log` | Apenas erros (ERROR+) | Rotação 10MB, 5 backups |
+| **Console (stdout)** | Todos os logs | Para integração com CloudWatch/ELK |
+
+### Logs de operações CRUD
+
+```python
+# apps/profissionais/views.py
+def perform_create(self, serializer):
+    profissional = serializer.save()
+    logger.info("Profissional criado: ID=%d, Nome=%s", profissional.id, profissional.nome_social)
+
+def perform_update(self, serializer):
+    profissional = serializer.save()
+    logger.info("Profissional atualizado: ID=%d, Nome=%s", profissional.id, profissional.nome_social)
+
+def perform_destroy(self, instance):
+    logger.info("Profissional excluído: ID=%d, Nome=%s", instance.id, instance.nome_social)
+    instance.delete()
 ```
 
 ---
 
-## 🔄 Proposta de Rollback
+## 🚀 CI/CD Pipeline
+
+### Pipeline GitHub Actions (`.github/workflows/ci-cd.yml`)
+
+O pipeline roda automaticamente a cada push nas branches `main`, `staging` e `develop`.
+
+```
+Push/PR → [1. Lint] → [2. Testes] → [3. Build Docker] → [4. Deploy]
+```
+
+### Etapas
+
+| Etapa | O que faz | Quando roda |
+|---|---|---|
+| **🔍 Lint** | Black + isort + Flake8 | Sempre |
+| **🧪 Testes** | `python manage.py test` com PostgreSQL real | Após lint passar |
+| **🐳 Build** | Build da imagem Docker | Após testes passarem |
+| **🚀 Deploy Staging** | Push ECR + deploy ECS | Branch `staging` |
+| **🏭 Deploy Production** | Push ECR + Blue/Green ECS | Branch `main` |
+
+### Serviço PostgreSQL no CI
+
+Os testes rodam com **PostgreSQL real** no GitHub Actions (não SQLite):
+
+```yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    env:
+      POSTGRES_DB: lacrei_saude_test
+      POSTGRES_USER: lacrei_user
+      POSTGRES_PASSWORD: lacrei_password_test
+    ports:
+      - 5432:5432
+```
+
+---
+
+## 🔄 Deploy & Rollback
 
 ### Estratégia: Blue/Green Deploy
 
-Utilizamos **Blue/Green Deploy** com AWS ECS para minimizar downtime e permitir rollback instantâneo:
+O deploy usa a estratégia **Blue/Green** via AWS ECS, garantindo:
+
+- ✅ **Zero downtime** – Nova versão sobe antes de desligar a antiga
+- ✅ **Rollback instantâneo** – Basta reativar a versão anterior
+- ✅ **Validação** – Health check verifica a nova versão antes de roteamento
+
+### Fluxo
 
 ```
-                    ┌──────── ALB ────────┐
-                    │                      │
-              ┌─────▼─────┐        ┌──────▼──────┐
-              │   BLUE     │        │   GREEN      │
-              │ (Atual)    │        │ (Nova versão)│
-              │ v1.0.0     │        │ v1.1.0       │
-              └────────────┘        └──────────────┘
-                    │                      │
-         100% tráfego              0% tráfego
-         (até validação)           (em teste)
+1. Build nova imagem Docker
+2. Push para ECR (registry)
+3. Criar nova Task Definition (Green)
+4. Deploy no ECS com maximumPercent=200
+5. Health check na nova versão
+6. Se OK: rotear tráfego para Green
+7. Se FALHA: tráfego mantido no Blue (rollback automático)
 ```
-
-### Fluxo de Rollback
-
-1. **Deploy automático**: GitHub Actions faz deploy da nova versão no ambiente **Green**
-2. **Health checks**: ALB verifica saúde dos novos containers
-3. **Troca de tráfego**: Se saudável, tráfego migra de Blue → Green
-4. **Rollback**: Se falhar, tráfego volta para Blue instantaneamente
 
 ### Comandos de Rollback Manual
 
 ```bash
-# Opção 1: Revert no GitHub Actions
-# Reverter o último commit na branch main
-git revert HEAD
-git push origin main
-# O pipeline será executado com o código anterior
+# 1. Listar task definitions disponíveis
+aws ecs list-task-definitions --family lacrei-saude-api --sort DESC
 
-# Opção 2: Deploy de versão anterior via AWS CLI
+# 2. Reverter para versão anterior
 aws ecs update-service \
   --cluster lacrei-production-cluster \
-  --service lacrei-api-production \
-  --task-definition lacrei-api:VERSAO_ANTERIOR \
+  --service lacrei-saude-api-production \
+  --task-definition lacrei-saude-api:<VERSAO_ANTERIOR> \
   --force-new-deployment
 
-# Opção 3: Rollback de migração do banco
-docker compose exec web python manage.py migrate app_name MIGRATION_NUMBER
+# 3. Verificar status do rollback
+aws ecs describe-services \
+  --cluster lacrei-production-cluster \
+  --services lacrei-saude-api-production \
+  --query 'services[0].deployments'
 ```
 
-### Checklist de Rollback
+### Ambientes
 
-- [ ] Identificar a versão estável anterior
-- [ ] Executar rollback via CLI ou GitHub Actions revert
-- [ ] Verificar health checks pós-rollback
-- [ ] Verificar logs de erro
-- [ ] Comunicar time sobre o rollback
-- [ ] Documentar o motivo e criar issue para fix
+| Ambiente | Branch | URL | Configuração |
+|---|---|---|---|
+| **Desenvolvimento** | `develop` | `localhost:8000` | `settings/base.py` (DEBUG=True) |
+| **Staging** | `staging` | `staging.lacrei.com` | `settings/staging.py` (SSL, logs verbose) |
+| **Produção** | `main` | `api.lacrei.com` | `settings/production.py` (HSTS, rate limit) |
+
+### Infraestrutura AWS
+
+```
+ALB (Application Load Balancer)
+  ├── Target Group Blue (porta 8000)
+  └── Target Group Green (porta 8001)
+
+ECS Cluster
+  ├── Service (Fargate)
+  │   └── Task Definition
+  │       └── Container: lacrei-saude-api
+  └── Auto Scaling: 2-10 tasks
+
+RDS PostgreSQL 16
+  └── Multi-AZ (produção)
+```
 
 ---
 
-## 💳 Integração com Assas
+## 💳 Integração Assas
 
 ### Proposta Arquitetural
 
-A integração com a **Assas** (gateway de pagamentos) permite o split de pagamento entre a Lacrei Saúde e os profissionais. Arquivo: `apps/consultas/services/assas_integration.py`
+O arquivo `apps/consultas/services/assas_integration.py` contém a proposta completa de integração com o gateway de pagamento Assas.
 
 ### Fluxo Proposto
 
 ```
-Paciente                     API Lacrei              Assas
-   │                            │                      │
-   │  1. Agendar consulta       │                      │
-   ├───────────────────────────▶│                      │
-   │                            │  2. Criar cobrança   │
-   │                            ├─────────────────────▶│
-   │                            │                      │
-   │                            │  3. Configurar split  │
-   │                            ├─────────────────────▶│
-   │                            │                      │
-   │  4. Link de pagamento      │                      │
-   │◀───────────────────────────┤                      │
-   │                            │                      │
-   │  5. Pagar (PIX/Boleto)     │                      │
-   ├──────────────────────────────────────────────────▶│
-   │                            │                      │
-   │                            │  6. Webhook pagamento │
-   │                            │◀─────────────────────┤
-   │                            │                      │
-   │  7. Confirmação            │                      │
-   │◀───────────────────────────┤                      │
+1. Paciente agenda consulta
+2. API cria cobrança no Assas
+3. Paciente efetua pagamento
+4. Assas envia webhook de confirmação
+5. API atualiza status da consulta para "confirmada"
+6. Split automático: 80% profissional / 20% Lacrei
 ```
 
 ### Split de Pagamento
 
-- **80%** → Profissional da saúde
-- **20%** → Taxa Lacrei Saúde
-
-A implementação atual é um **mock** que demonstra toda a arquitetura. Para ativação em produção, basta substituir os métodos mock por chamadas HTTP reais à API da Assas.
+```python
+# Distribuição do valor da consulta
+SPLIT_CONFIG = {
+    "profissional": 80,  # 80% para o profissional
+    "lacrei": 20,         # 20% para Lacrei Saúde (taxa da plataforma)
+}
+```
 
 ---
 
 ## 💡 Justificativas Técnicas
 
 ### 1. Django + DRF
-Escolhido por ser o framework web Python mais maduro, com excelente suporte a APIs REST, ORM robusto com proteção nativa contra SQL Injection, e ecossistema extenso de pacotes.
+Framework Python mais maduro para APIs, com ORM robusto, admin integrado, e ecossistema vasto. O DRF adiciona serialização, autenticação, paginação e throttling prontos para produção.
 
 ### 2. JWT (SimpleJWT)
-Autenticação stateless ideal para APIs RESTful. Permite escalabilidade horizontal (múltiplas instâncias) sem necessidade de sessões no servidor. Rotation de refresh tokens aumenta a segurança.
+Autenticação stateless ideal para APIs REST. Tokens de acesso curtos (30min) com refresh tokens longos (7 dias) garantem segurança sem sacrificar UX. A rotação automática de refresh tokens previne token theft.
 
 ### 3. PostgreSQL
-Banco de dados relacional robusto, com excelente suporte a JSON, índices parciais e full-text search. Ideal para dados estruturados como profissionais e consultas.
+Banco de dados relacional robusto, ideal para dados estruturados como profissionais e consultas. Suporte nativo a JSON, full-text search, e melhor performance com índices compostos.
 
 ### 4. Poetry
-Gerenciador de dependências moderno que substitui pip + requirements.txt. Oferece lock file determinístico, resolução de dependências mais confiável e melhor gestão de ambientes virtuais.
+Gerenciamento de dependências determinístico com lockfile, garantindo builds reprodutíveis. Superior ao pip/requirements.txt para projetos profissionais.
 
 ### 5. Docker + Docker Compose
-Containerização garante que o ambiente é replicável em qualquer máquina. Docker Compose simplifica a orquestração local de API + PostgreSQL. Em produção, ECS Fargate gerencia os containers.
+Containerização garante consistência entre ambientes (dev, staging, prod). O docker-compose.yml inclui:
+- **db**: PostgreSQL 16 com healthcheck
+- **web**: API com Gunicorn (produção)
+- **web-dev**: Django runserver (desenvolvimento)
+- **test**: Runner de testes automatizados
 
-### 6. Separação de Settings (base/staging/production)
-Permite configurações específicas por ambiente sem duplicação de código. Base contém configurações compartilhadas, staging e production herdam e sobrescrevem apenas o necessário.
+### 6. Separação de Settings
+Settings divididos em `base.py` (configurações compartilhadas), `staging.py` (SSL + logs verbose), e `production.py` (HSTS + rate limiting conservador). Permite controle granular por ambiente.
 
 ### 7. Bleach para Sanitização
-Biblioteca especializada em sanitização HTML/XSS, complementando a proteção nativa do Django ORM contra SQL Injection. Aplicada diretamente nos serializers para proteção em múltiplas camadas.
+Biblioteca especializada em sanitização HTML/XSS. Todos os campos de texto passam por `bleach.clean()` nos serializers antes de serem salvos, prevenindo ataques de Cross-Site Scripting.
 
 ### 8. drf-spectacular para Documentação
-Gera documentação OpenAPI 3.0 automaticamente a partir do código, com Swagger UI e ReDoc. Reduz o risco de documentação desatualizada.
+Gera documentação OpenAPI 3.0 automaticamente a partir dos serializers e viewsets. Interface Swagger UI interativa permite testar endpoints diretamente do navegador.
 
 ### 9. Blue/Green Deploy
-Estratégia de deploy que permite rollback instantâneo em caso de falha, sem downtime. O ALB gerencia a troca de tráfego entre as versões.
+Estratégia de deploy que mantém duas versões rodando simultaneamente, eliminando downtime e permitindo rollback instantâneo em caso de falha.
 
 ### 10. Middleware de Logging
-Logging centralizado captura todas as requisições com método, path, IP, status code e duração. Essencial para monitoramento, debugging e auditoria de acessos.
+Logging centralizado que captura todas as requisições com método, path, usuário, IP, status code e duração. Logs vão para console (stdout) e arquivos rotativos, facilitando integração com serviços de monitoramento.
 
 ---
 
-## 📝 Erros Encontrados e Melhorias
+## 📝 Variáveis de Ambiente
 
-### Erros/Desafios Encontrados
+Copie `.env.example` para `.env` e configure:
 
-1. **Encoding UTF-8 no Windows**: Necessário configurar `PYTHONIOENCODING=utf-8` para caracteres especiais em logs e testes.
-2. **CORS em desenvolvimento**: Headers de CORS precisam incluir `Authorization` para JWT funcionar via Swagger UI.
-3. **Timezone**: Configuração de `America/Sao_Paulo` com `USE_TZ=True` para consistência de datas.
+```env
+# Django
+DJANGO_SECRET_KEY=sua-chave-secreta-aqui
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 
-### Melhorias Propostas
+# Banco de Dados (PostgreSQL)
+DB_NAME=lacrei_saude
+DB_USER=lacrei_user
+DB_PASSWORD=lacrei_password_secure
+DB_HOST=db
+DB_PORT=5432
 
-1. **Cache com Redis**: Implementar cache de consultas frequentes para reduzir carga no banco.
-2. **WebSockets**: Notificações em tempo real para atualizações de consultas.
-3. **Rate Limiting por IP**: Proteção mais granular contra abusos.
-4. **Soft Delete**: Manter histórico de registros excluídos para auditoria.
-5. **Paginação cursor-based**: Para datasets maiores, mais eficiente que offset-based.
-6. **Observabilidade**: Integração com Prometheus + Grafana para métricas.
-7. **Feature Flags**: Controle de funcionalidades com LaunchDarkly ou similar.
-8. **API Versioning**: Versionamento de endpoints (v1, v2) para evolução sem breaking changes.
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+
+# JWT
+JWT_ACCESS_TOKEN_LIFETIME_MINUTES=30
+JWT_REFRESH_TOKEN_LIFETIME_DAYS=7
+```
 
 ---
 
@@ -576,4 +693,4 @@ Este projeto foi desenvolvido como parte do desafio técnico da Lacrei Saúde.
 
 ---
 
-**Desenvolvido com ❤️ para a [Lacrei Saúde](https://lacreisaude.com.br/)**
+**Desenvolvido com ❤️ para a comunidade LGBTQIAPN+**
