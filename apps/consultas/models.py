@@ -57,7 +57,9 @@ class Consulta(models.Model):
         ]
 
     def __str__(self):
-        return f"Consulta #{self.id} - {self.profissional.nome_social} em {self.data.strftime('%d/%m/%Y %H:%M')}"
+        data_fmt = self.data.strftime("%d/%m/%Y %H:%M")
+        nome = self.profissional.nome_social
+        return f"Consulta #{self.id} - {nome} em {data_fmt}"
 
     @property
     def is_future(self):

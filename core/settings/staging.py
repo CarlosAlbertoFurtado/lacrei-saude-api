@@ -19,17 +19,17 @@ SECURE_HSTS_PRELOAD = False
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # Allowed hosts para staging AWS
-ALLOWED_HOSTS = config(
+ALLOWED_HOSTS = config(  # noqa: F405
     "DJANGO_ALLOWED_HOSTS",
     default="staging.lacrei-saude.com.br",
-    cast=Csv(),
+    cast=Csv(),  # noqa: F405
 )
 
 # CORS para staging
-CORS_ALLOWED_ORIGINS = config(
+CORS_ALLOWED_ORIGINS = config(  # noqa: F405
     "CORS_ALLOWED_ORIGINS",
     default="https://staging.lacrei-saude.com.br",
-    cast=Csv(),
+    cast=Csv(),  # noqa: F405
 )
 
 # Logging mais detalhado em staging

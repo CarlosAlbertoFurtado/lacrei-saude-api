@@ -12,12 +12,13 @@ Cobertura:
 
 from datetime import timedelta
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.profissionais.models import Profissional
 

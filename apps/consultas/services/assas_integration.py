@@ -133,9 +133,7 @@ class AssasService:
             "bankSlipUrl": "https://sandbox.asaas.com/b/mock_boleto",
         }
 
-    def configure_split(
-        self, payment_id: str, splits: list[SplitData]
-    ) -> dict:
+    def configure_split(self, payment_id: str, splits: list[SplitData]) -> dict:
         """
         Configura split de pagamento.
 
@@ -144,9 +142,7 @@ class AssasService:
 
         Em produção: POST https://api.asaas.com/v3/payments/{id}/splits
         """
-        logger.info(
-            "Assas Mock: Configurando split para pagamento %s", payment_id
-        )
+        logger.info("Assas Mock: Configurando split para pagamento %s", payment_id)
 
         split_configs = []
         for split in splits:
@@ -171,9 +167,7 @@ class AssasService:
 
         Em produção: GET https://api.asaas.com/v3/payments/{id}
         """
-        logger.info(
-            "Assas Mock: Consultando status do pagamento %s", payment_id
-        )
+        logger.info("Assas Mock: Consultando status do pagamento %s", payment_id)
 
         # Mock response
         return {

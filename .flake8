@@ -7,7 +7,8 @@ exclude =
     migrations,
     .venv,
     venv,
-    staticfiles
+    staticfiles,
+    scripts
 per-file-ignores =
     __init__.py:F401
-    settings/*.py:F401,F403,F405
+    */settings/*.py:F401,F403,F405

@@ -9,7 +9,6 @@ facilitando o consumo pela frontend e debugging.
 import logging
 
 from rest_framework import status
-from rest_framework.exceptions import APIException
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
@@ -28,7 +27,11 @@ def custom_exception_handler(exc, context):
             "error": True,
             "status_code": response.status_code,
             "message": _get_error_message(response),
-            "details": response.data if isinstance(response.data, dict) else {"detail": response.data},
+            "details": (
+                response.data
+                if isinstance(response.data, dict)
+                else {"detail": response.data}
+            ),
         }
 
         # Log de erros do servidor (5xx)

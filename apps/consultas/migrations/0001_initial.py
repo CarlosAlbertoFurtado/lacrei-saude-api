@@ -9,25 +9,67 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('profissionais', '0001_initial'),
+        ("profissionais", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Consulta',
+            name="Consulta",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('data', models.DateTimeField(help_text='Data e hora da consulta médica.', verbose_name='Data da Consulta')),
-                ('observacoes', models.TextField(blank=True, default='', help_text='Observações adicionais sobre a consulta (opcional).', verbose_name='Observações')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
-                ('profissional', models.ForeignKey(help_text='Profissional da saúde responsável pela consulta.', on_delete=django.db.models.deletion.PROTECT, related_name='consultas', to='profissionais.profissional', verbose_name='Profissional')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "data",
+                    models.DateTimeField(
+                        help_text="Data e hora da consulta médica.",
+                        verbose_name="Data da Consulta",
+                    ),
+                ),
+                (
+                    "observacoes",
+                    models.TextField(
+                        blank=True,
+                        default="",
+                        help_text="Observações adicionais sobre a consulta (opcional).",
+                        verbose_name="Observações",
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Criado em"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="Atualizado em"),
+                ),
+                (
+                    "profissional",
+                    models.ForeignKey(
+                        help_text="Profissional da saúde responsável pela consulta.",
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="consultas",
+                        to="profissionais.profissional",
+                        verbose_name="Profissional",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Consulta',
-                'verbose_name_plural': 'Consultas',
-                'ordering': ['-data'],
-                'indexes': [models.Index(fields=['data'], name='idx_consulta_data'), models.Index(fields=['profissional'], name='idx_consulta_profissional')],
+                "verbose_name": "Consulta",
+                "verbose_name_plural": "Consultas",
+                "ordering": ["-data"],
+                "indexes": [
+                    models.Index(fields=["data"], name="idx_consulta_data"),
+                    models.Index(
+                        fields=["profissional"], name="idx_consulta_profissional"
+                    ),
+                ],
             },
         ),
     ]

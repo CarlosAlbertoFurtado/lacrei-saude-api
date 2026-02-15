@@ -14,11 +14,12 @@ import logging
 
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import Consulta
 from .serializers import ConsultaListSerializer, ConsultaSerializer
@@ -77,7 +78,11 @@ class ConsultaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     queryset = Consulta.objects.select_related("profissional").all()
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_fields = ["profissional", "data"]
     search_fields = ["profissional__nome_social", "observacoes"]
     ordering_fields = ["data", "created_at"]
@@ -150,7 +155,10 @@ class ConsultaViewSet(viewsets.ModelViewSet):
         if not consultas.exists():
             return Response(
                 {
-                    "message": f"Nenhuma consulta encontrada para o profissional ID {profissional_id}.",
+                    "message": (
+                        "Nenhuma consulta encontrada para "
+                        f"o profissional ID {profissional_id}."
+                    ),
                     "results": [],
                 },
                 status=status.HTTP_200_OK,

@@ -23,9 +23,7 @@ class ConsultaSerializer(serializers.ModelSerializer):
     Na leitura, retorna os dados completos do profissional.
     """
 
-    profissional_detail = ProfissionalSerializer(
-        source="profissional", read_only=True
-    )
+    profissional_detail = ProfissionalSerializer(source="profissional", read_only=True)
 
     class Meta:
         model = Consulta

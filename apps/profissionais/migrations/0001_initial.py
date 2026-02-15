@@ -7,26 +7,71 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Profissional',
+            name="Profissional",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nome_social', models.CharField(help_text='Nome social do profissional da saúde.', max_length=255, verbose_name='Nome Social')),
-                ('profissao', models.CharField(help_text='Profissão ou especialidade do profissional.', max_length=255, verbose_name='Profissão')),
-                ('endereco', models.TextField(help_text='Endereço completo do profissional.', verbose_name='Endereço')),
-                ('contato', models.CharField(help_text='Informação de contato (e-mail ou telefone).', max_length=255, verbose_name='Contato')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Criado em')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Atualizado em')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "nome_social",
+                    models.CharField(
+                        help_text="Nome social do profissional da saúde.",
+                        max_length=255,
+                        verbose_name="Nome Social",
+                    ),
+                ),
+                (
+                    "profissao",
+                    models.CharField(
+                        help_text="Profissão ou especialidade do profissional.",
+                        max_length=255,
+                        verbose_name="Profissão",
+                    ),
+                ),
+                (
+                    "endereco",
+                    models.TextField(
+                        help_text="Endereço completo do profissional.",
+                        verbose_name="Endereço",
+                    ),
+                ),
+                (
+                    "contato",
+                    models.CharField(
+                        help_text="Informação de contato (e-mail ou telefone).",
+                        max_length=255,
+                        verbose_name="Contato",
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Criado em"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="Atualizado em"),
+                ),
             ],
             options={
-                'verbose_name': 'Profissional',
-                'verbose_name_plural': 'Profissionais',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['nome_social'], name='idx_profissional_nome'), models.Index(fields=['profissao'], name='idx_profissional_profissao')],
+                "verbose_name": "Profissional",
+                "verbose_name_plural": "Profissionais",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(fields=["nome_social"], name="idx_profissional_nome"),
+                    models.Index(
+                        fields=["profissao"], name="idx_profissional_profissao"
+                    ),
+                ],
             },
         ),
     ]

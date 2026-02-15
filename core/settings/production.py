@@ -19,17 +19,17 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Allowed hosts para produção AWS
-ALLOWED_HOSTS = config(
+ALLOWED_HOSTS = config(  # noqa: F405
     "DJANGO_ALLOWED_HOSTS",
     default="api.lacrei-saude.com.br",
-    cast=Csv(),
+    cast=Csv(),  # noqa: F405
 )
 
 # CORS para produção
-CORS_ALLOWED_ORIGINS = config(
+CORS_ALLOWED_ORIGINS = config(  # noqa: F405
     "CORS_ALLOWED_ORIGINS",
     default="https://lacrei-saude.com.br,https://www.lacrei-saude.com.br",
-    cast=Csv(),
+    cast=Csv(),  # noqa: F405
 )
 
 # Throttling mais conservador em produção

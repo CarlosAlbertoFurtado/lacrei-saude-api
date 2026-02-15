@@ -43,7 +43,8 @@ def sanitize_dict(data: dict, fields: list[str] | None = None) -> dict:
 
     Args:
         data: Dicionário com dados a sanitizar.
-        fields: Lista de campos para sanitizar. Se None, sanitiza todos os campos string.
+        fields: Lista de campos para sanitizar.
+            Se None, sanitiza todos os campos string.
 
     Returns:
         Dicionário com dados sanitizados.
