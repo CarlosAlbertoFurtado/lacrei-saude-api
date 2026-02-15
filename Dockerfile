@@ -12,17 +12,13 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    build-essential \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies via pip (faster than Poetry in Docker)
-COPY pyproject.toml poetry.lock /app/
-RUN pip install --no-cache-dir poetry==1.8.4 \
-    && poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-root --only main \
-    && pip uninstall -y poetry
+# Install Python dependencies (pip is much faster than Poetry in Docker)
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the project
 COPY . /app/
