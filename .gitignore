@@ -50,3 +50,5 @@ poetry.lock
 # Temporary files
 *.tmp
 output.txt
+*.pdf
+logs/
