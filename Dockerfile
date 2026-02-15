@@ -32,8 +32,10 @@ COPY . /app/
 # Make entrypoint executable
 RUN chmod +x /app/entrypoint.sh
 
-# Collect static files
-RUN python manage.py collectstatic --noinput 2>/dev/null || true
+# Collect static files (needs secret key for Django to load)
+RUN DJANGO_SECRET_KEY=build-only-key \
+    DJANGO_SETTINGS_MODULE=core.settings.base \
+    python manage.py collectstatic --noinput 2>/dev/null || true
 
 # Create logs directory
 RUN mkdir -p /app/logs

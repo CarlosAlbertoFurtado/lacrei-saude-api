@@ -45,7 +45,7 @@ coverage.xml
 Thumbs.db
 
 # Poetry
-poetry.lock
+# poetry.lock deve ser commitado para builds reprodutíveis
 
 # Temporary files
 *.tmp
