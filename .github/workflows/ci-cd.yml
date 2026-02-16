@@ -124,7 +124,7 @@ jobs:
 
       - name: ✅ Verificar imagem
         run: |
-          docker run --rm lacrei-saude-api:${{ github.sha }} python -c "import django; print(f'Django {django.VERSION} OK')"
+          docker run --rm --entrypoint python lacrei-saude-api:${{ github.sha }} -c "import django; print(f'Django {django.VERSION} OK')"
           echo "✅ Imagem Docker construída com sucesso!"
 
   # ==========================================
