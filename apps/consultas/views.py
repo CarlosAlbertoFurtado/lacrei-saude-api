@@ -23,6 +23,7 @@ from rest_framework.response import Response
 
 from .models import Consulta
 from .serializers import ConsultaListSerializer, ConsultaSerializer
+from .services.consulta_service import ConsultaService
 
 logger = logging.getLogger("apps")
 
@@ -93,77 +94,34 @@ class ConsultaViewSet(viewsets.ModelViewSet):
             return ConsultaListSerializer
         return ConsultaSerializer
 
+    def get_queryset(self):
+        return ConsultaService.list_consultas(super().get_queryset())
+
     def perform_create(self, serializer):
-        consulta = serializer.save()
-        logger.info(
-            "Consulta criada: ID=%d, Profissional=%s, Data=%s",
-            consulta.id,
-            consulta.profissional.nome_social,
-            consulta.data,
-        )
+        try:
+            consulta = ConsultaService.agendar_consulta(serializer.validated_data)
+            serializer.instance = consulta
+        except ValueError as e:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"data": str(e)})
 
     def perform_update(self, serializer):
-        consulta = serializer.save()
-        logger.info(
-            "Consulta atualizada: ID=%d, Profissional=%s, Data=%s",
-            consulta.id,
-            consulta.profissional.nome_social,
-            consulta.data,
-        )
+        try:
+            consulta = ConsultaService.atualizar_consulta(
+                self.get_object(), serializer.validated_data
+            )
+            serializer.instance = consulta
+        except ValueError as e:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"data": str(e)})
 
     def perform_destroy(self, instance):
-        logger.info(
-            "Consulta excluída: ID=%d, Profissional=%s, Data=%s",
-            instance.id,
-            instance.profissional.nome_social,
-            instance.data,
-        )
-        instance.delete()
+        ConsultaService.cancelar_consulta(instance)
 
-    @extend_schema(
-        summary="Buscar consultas por profissional",
-        description=(
-            "Retorna todas as consultas vinculadas a um profissional específico, "
-            "identificado pelo seu ID. Requisito obrigatório do desafio."
-        ),
-        tags=["Consultas"],
-        parameters=[
-            OpenApiParameter(
-                name="profissional_id",
-                type=int,
-                location=OpenApiParameter.PATH,
-                description="ID do profissional da saúde.",
-            ),
-        ],
-        responses={200: ConsultaListSerializer(many=True)},
-    )
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path="por-profissional/(?P<profissional_id>[0-9]+)",
-        url_name="por-profissional",
-    )
+    @action(detail=False, methods=["get"], url_path="por-profissional/(?P<profissional_id>[^/.]+)")
     def por_profissional(self, request, profissional_id=None):
-        """
-        Busca consultas pelo ID do profissional.
-
-        Requisito obrigatório do desafio:
-        "Busca de consultas pelo ID do profissional"
-        """
-        consultas = self.get_queryset().filter(profissional_id=profissional_id)
-
-        if not consultas.exists():
-            return Response(
-                {
-                    "message": (
-                        "Nenhuma consulta encontrada para "
-                        f"o profissional ID {profissional_id}."
-                    ),
-                    "results": [],
-                },
-                status=status.HTTP_200_OK,
-            )
-
+        """Busca consultas vinculadas a um ID de profissional."""
+        consultas = ConsultaService.buscar_por_profissional(profissional_id)
         page = self.paginate_queryset(consultas)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

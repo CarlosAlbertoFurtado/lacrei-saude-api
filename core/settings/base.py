@@ -6,6 +6,7 @@ Decisão técnica: Separação de settings por ambiente (base, staging, producti
 para facilitar a gestão de configurações e segurança.
 """
 
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -43,6 +44,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    # Observabilidade: Correlation ID para rastreamento de requisições
+    "core.middleware.correlation_middleware.CorrelationIdMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -50,8 +53,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # Custom middleware
+    # Custom middleware - Observabilidade
     "core.middleware.logging_middleware.RequestLoggingMiddleware",
+    "core.middleware.metrics_middleware.MetricsMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -75,21 +79,29 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 
 # Database
-# Decisão técnica: PostgreSQL é obrigatório conforme o desafio.
-# Utiliza variáveis de ambiente para credenciais (segurança).
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config("DB_NAME", default="lacrei_saude"),
-        "USER": config("DB_USER", default="lacrei_user"),
-        "PASSWORD": config("DB_PASSWORD", default="lacrei_password_secure"),
-        "HOST": config("DB_HOST", default="db"),
-        "PORT": config("DB_PORT", default="5432"),
-        "OPTIONS": {
-            "connect_timeout": 10,
-        },
+# Decisão técnica: PostgreSQL é obrigatório para produção.
+# Durante os testes, utilizamos SQLite para maior velocidade e facilidade de CI local.
+if "test" in sys.argv:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME", default="lacrei_saude"),
+            "USER": config("DB_USER", default="lacrei_user"),
+            "PASSWORD": config("DB_PASSWORD", default="lacrei_password_secure"),
+            "HOST": config("DB_HOST", default="db"),
+            "PORT": config("DB_PORT", default="5432"),
+            "OPTIONS": {
+                "connect_timeout": 10,
+            },
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -246,11 +258,16 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "[{asctime}] {levelname} {name} {module} {message}",
+            "format": "[{asctime}] {levelname} {name} {module} [{correlation_id}] {message}",
             "style": "{",
         },
         "simple": {
-            "format": "[{asctime}] {levelname} {message}",
+            "format": "[{asctime}] {levelname} [{correlation_id}] {message}",
+            "style": "{",
+        },
+        "json": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{asctime}] {levelname} {name} {message}",
             "style": "{",
         },
     },
@@ -258,12 +275,16 @@ LOGGING = {
         "require_debug_false": {
             "()": "django.utils.log.RequireDebugFalse",
         },
+        "correlation_id": {
+            "()": "core.middleware.correlation_middleware.CorrelationIdFilter",
+        },
     },
     "handlers": {
         "console": {
             "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["correlation_id"],
         },
         "file_access": {
             "level": "INFO",
@@ -272,6 +293,7 @@ LOGGING = {
             "maxBytes": 10 * 1024 * 1024,  # 10MB
             "backupCount": 5,
             "formatter": "verbose",
+            "filters": ["correlation_id"],
         },
         "file_error": {
             "level": "ERROR",
@@ -280,6 +302,7 @@ LOGGING = {
             "maxBytes": 10 * 1024 * 1024,  # 10MB
             "backupCount": 5,
             "formatter": "verbose",
+            "filters": ["correlation_id"],
         },
     },
     "loggers": {

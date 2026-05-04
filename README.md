@@ -80,24 +80,41 @@ lacrei-saude-api/
 ├── apps/
 │   ├── profissionais/           # App: Profissionais da Saúde
 │   │   ├── models.py            #   Modelo com campos obrigatórios + índices
+│   │   ├── services.py          #   NOVO: Camada de Domínio/Business Logic (Desacoplamento)
 │   │   ├── serializers.py       #   Validação + sanitização de inputs
-│   │   ├── views.py             #   ViewSet com JWT + permissões + logging
-│   │   ├── tests.py             #   21 testes automatizados
+│   │   ├── views.py             #   ViewSet chamando Camada de Serviço
+│   │   ├── tests.py             #   Testes automatizados + Edge Cases
 │   │   ├── urls.py              #   Rotas REST
 │   │   └── admin.py             #   Admin Django
 │   └── consultas/               # App: Consultas Médicas
 │       ├── models.py            #   Modelo com FK para Profissional (PROTECT)
+│       ├── services.py          #   NOVO: Regras de negócio (ex: data retroativa)
 │       ├── serializers.py       #   Validação de data + sanitização
 │       ├── views.py             #   ViewSet com busca por profissional
-│       ├── tests.py             #   21 testes automatizados
+│       ├── tests.py             #   Testes de erro e casos de borda
 │       ├── urls.py              #   Rotas REST
 │       ├── admin.py             #   Admin Django
 │       └── services/
 │           └── assas_integration.py  # Proposta integração Assas
 ├── core/
+│   ├── middleware/
+│   │   ├── __init__.py
+│   │   ├── logging_middleware.py # Observabilidade: Logs de acesso/erro
 │   ├── settings/
 │   │   ├── base.py              # Settings base (JWT, CORS, logging, DRF)
 │   │   ├── staging.py           # SSL + segurança para staging
+│   │   └── production.py        # Segurança máxima + HSTS
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   └── sanitization.py      # Utilitário de limpeza anti-XSS
+│   ├── views.py                 # Health Check detalhado (Métricas + Saúde)
+│   └── urls.py                  # Rotas globais + Docs
+├── scripts/
+│   └── make_migrations.py       # Helper para migrações em Docker
+├── Dockerfile                   # Build para produção
+├── docker-compose.yml           # Orquestração local (API + DB)
+├── pyproject.toml               # Poetry (dependências)
+└── README.md                    # Documentação técnica completa
 │   │   └── production.py        # HSTS + segurança máxima
 │   ├── middleware/
 │   │   └── logging_middleware.py # Logs de acesso (method, path, user, IP, duration)
@@ -434,55 +451,28 @@ Profissional.objects.filter(nome_social__icontains=search_term)
 
 ---
 
-## 📊 Logging & Monitoramento
+## 📊 Observabilidade & Monitoramento
 
-### Middleware de Logging (`core/middleware/logging_middleware.py`)
+### 1. Health Check Detalhado (`/api/health/`)
+O endpoint de saúde foi expandido para fornecer uma visão 360º da aplicação, não apenas do banco de dados.
 
-Todas as requisições são logadas automaticamente:
+**Campos da Resposta:**
+- `status`: "healthy" ou "unhealthy"
+- `timestamp`: Unix timestamp para verificação de latência
+- `metrics`: Contagem em tempo real de Profissionais e Consultas
+- `checks`: Status detalhado do banco de dados e informações do sistema (OS, Python Version)
 
-```
-[2024-01-15 10:30:00] INFO core.middleware logging_middleware POST /api/profissionais/ | Status: 201 | User: admin | IP: 127.0.0.1 | Duration: 0.045s
-[2024-01-15 10:31:00] WARNING core.middleware logging_middleware GET /api/profissionais/999/ | Status: 404 | User: admin | IP: 127.0.0.1 | Duration: 0.003s
-[2024-01-15 10:32:00] ERROR core.middleware logging_middleware POST /api/consultas/ | Status: 500 | User: admin | IP: 127.0.0.1 | Duration: 0.001s
-```
+### 2. Middleware de Logging (`core/middleware/logging_middleware.py`)
+Todas as requisições são logadas automaticamente com nível de severidade dinâmico.
+- **INFO**: Respostas 2xx e 3xx
+- **WARNING**: Respostas 4xx (Erros de cliente/validação)
+- **ERROR**: Respostas 5xx (Erros de servidor/exceções não tratadas)
 
-### Informações logadas
-
-| Campo | Descrição |
-|---|---|
-| **Timestamp** | Data/hora da requisição |
-| **Level** | INFO (2xx), WARNING (4xx), ERROR (5xx) |
-| **Method** | GET, POST, PUT, PATCH, DELETE |
-| **Path** | URL do endpoint acessado |
-| **Status** | Código HTTP da resposta |
-| **User** | Usuário autenticado ou "anonymous" |
-| **IP** | Endereço IP do cliente |
-| **Duration** | Tempo de processamento da requisição |
-
-### Arquivos de Log
-
-| Arquivo | Conteúdo | Configuração |
-|---|---|---|
-| `logs/access.log` | Todos os acessos (INFO+) | Rotação 10MB, 5 backups |
-| `logs/error.log` | Apenas erros (ERROR+) | Rotação 10MB, 5 backups |
-| **Console (stdout)** | Todos os logs | Para integração com CloudWatch/ELK |
-
-### Logs de operações CRUD
-
-```python
-# apps/profissionais/views.py
-def perform_create(self, serializer):
-    profissional = serializer.save()
-    logger.info("Profissional criado: ID=%d, Nome=%s", profissional.id, profissional.nome_social)
-
-def perform_update(self, serializer):
-    profissional = serializer.save()
-    logger.info("Profissional atualizado: ID=%d, Nome=%s", profissional.id, profissional.nome_social)
-
-def perform_destroy(self, instance):
-    logger.info("Profissional excluído: ID=%d, Nome=%s", instance.id, instance.nome_social)
-    instance.delete()
-```
+### 3. Camada de Serviço (Service Layer)
+A lógica de negócio foi movida das Views para arquivos `services.py`. Isso permite:
+- **Testabilidade**: Testar regras de negócio sem simular requisições HTTP
+- **Reuso**: Mesma lógica pode ser usada em comandos CLI, tasks Celery ou Views
+- **Clean Architecture**: Views cuidam apenas do protocolo HTTP, Services cuidam do domínio.
 
 ---
 
@@ -524,71 +514,34 @@ services:
 
 ---
 
-## 🔄 Deploy & Rollback
+## 🔄 Deploy & Rollback (AWS Cloud)
+
+### Infraestrutura como Código e Estratégia
+O deploy é automatizado via **GitHub Actions** para a **AWS**, utilizando serviços serverless para escalabilidade e baixo custo.
+
+### Componentes AWS Utilizados:
+1. **AWS ECS (Fargate)**: Executa os containers Docker sem necessidade de gerenciar servidores (EC2).
+2. **AWS ECR**: Registry privado para armazenar as imagens Docker da Lacrei Saúde.
+3. **AWS RDS (PostgreSQL 16)**: Banco de dados gerenciado com backup automático e Multi-AZ.
+4. **AWS ALB (Load Balancer)**: Distribui o tráfego e gerencia o SSL (HTTPS).
+5. **AWS Secrets Manager**: Armazena chaves sensíveis (DJANGO_SECRET_KEY, DB_PASSWORD).
 
 ### Estratégia: Blue/Green Deploy
+Garante que a nova versão (Green) esteja 100% saudável antes de substituir a versão atual (Blue).
 
-O deploy usa a estratégia **Blue/Green** via AWS ECS, garantindo:
+**Fluxo de Deploy:**
+1. **Build**: GitHub Actions gera a imagem e envia para o ECR.
+2. **Provision**: O ECS sobe novas instâncias da aplicação.
+3. **Health Check**: O Load Balancer verifica se o endpoint `/api/health/` da nova versão retorna 200 OK.
+4. **Switch**: Se aprovado, o tráfego é migrado. Se falhar, a versão antiga permanece ativa (Rollback Automático).
 
-- ✅ **Zero downtime** – Nova versão sobe antes de desligar a antiga
-- ✅ **Rollback instantâneo** – Basta reativar a versão anterior
-- ✅ **Validação** – Health check verifica a nova versão antes de roteamento
-
-### Fluxo
-
-```
-1. Build nova imagem Docker
-2. Push para ECR (registry)
-3. Criar nova Task Definition (Green)
-4. Deploy no ECS com maximumPercent=200
-5. Health check na nova versão
-6. Se OK: rotear tráfego para Green
-7. Se FALHA: tráfego mantido no Blue (rollback automático)
-```
-
-### Comandos de Rollback Manual
-
+### Comandos para Operações Manuais
 ```bash
-# 1. Listar task definitions disponíveis
-aws ecs list-task-definitions --family lacrei-saude-api --sort DESC
+# Verificar status dos serviços na AWS
+aws ecs describe-services --cluster lacrei-cluster --services lacrei-api
 
-# 2. Reverter para versão anterior
-aws ecs update-service \
-  --cluster lacrei-production-cluster \
-  --service lacrei-saude-api-production \
-  --task-definition lacrei-saude-api:<VERSAO_ANTERIOR> \
-  --force-new-deployment
-
-# 3. Verificar status do rollback
-aws ecs describe-services \
-  --cluster lacrei-production-cluster \
-  --services lacrei-saude-api-production \
-  --query 'services[0].deployments'
-```
-
-### Ambientes
-
-| Ambiente | Branch | URL | Configuração |
-|---|---|---|---|
-| **Desenvolvimento** | `develop` | `localhost:8000` | `settings/base.py` (DEBUG=True) |
-| **Staging** | `staging` | `staging.lacrei.com` | `settings/staging.py` (SSL, logs verbose) |
-| **Produção** | `main` | `api.lacrei.com` | `settings/production.py` (HSTS, rate limit) |
-
-### Infraestrutura AWS
-
-```
-ALB (Application Load Balancer)
-  ├── Target Group Blue (porta 8000)
-  └── Target Group Green (porta 8001)
-
-ECS Cluster
-  ├── Service (Fargate)
-  │   └── Task Definition
-  │       └── Container: lacrei-saude-api
-  └── Auto Scaling: 2-10 tasks
-
-RDS PostgreSQL 16
-  └── Multi-AZ (produção)
+# Forçar redeploy (útil para atualizar segredos ou configurações)
+aws ecs update-service --cluster lacrei-cluster --service lacrei-api --force-new-deployment
 ```
 
 ---

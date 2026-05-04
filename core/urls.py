@@ -5,7 +5,8 @@ Inclui:
 - Swagger/Redoc para documentação interativa
 - JWT auth endpoints
 - CRUD de profissionais e consultas
-- Health check endpoint
+- Health check endpoint (liveness + readiness)
+- Métricas de observabilidade
 """
 
 from drf_spectacular.views import (
@@ -22,13 +23,21 @@ from rest_framework_simplejwt.views import (
 from django.contrib import admin
 from django.urls import include, path
 
-from core.views import HealthCheckView
+from core.views import (
+    HealthCheckView,
+    LivenessCheckView,
+    MetricsView,
+    ReadinessCheckView,
+)
 
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
-    # Health check
+    # Health check & Observabilidade
     path("api/health/", HealthCheckView.as_view(), name="health-check"),
+    path("api/health/ready/", ReadinessCheckView.as_view(), name="readiness-check"),
+    path("api/health/live/", LivenessCheckView.as_view(), name="liveness-check"),
+    path("api/metrics/", MetricsView.as_view(), name="metrics"),
     # Authentication - JWT
     path(
         "api/auth/token/",

@@ -9,6 +9,10 @@ Segurança:
 - Autenticação JWT obrigatória em todos os endpoints
 - Permissão IsAuthenticated para controle de acesso
 - Logging de todas as operações CRUD
+
+Arquitetura:
+- Views são finas: delegam lógica de negócio para a camada de serviço
+- Exceções de domínio são traduzidas em respostas HTTP adequadas
 """
 
 import logging
@@ -21,8 +25,16 @@ from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.domain import (
+    ConflictException,
+    NotFoundException,
+    ProfissionalComConsultasException,
+    ValidationException,
+)
+
 from .models import Profissional
 from .serializers import ProfissionalListSerializer, ProfissionalSerializer
+from .services import ProfissionalService
 
 logger = logging.getLogger("apps")
 
@@ -88,50 +100,41 @@ class ProfissionalViewSet(viewsets.ModelViewSet):
         return ProfissionalSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        if self.action == "list":
-            queryset = queryset.annotate(total_consultas=Count("consultas"))
-        return queryset
+        return ProfissionalService.list_profissionais(super().get_queryset())
 
     def perform_create(self, serializer):
-        profissional = serializer.save()
-        logger.info(
-            "Profissional criado: ID=%d, Nome=%s",
-            profissional.id,
-            profissional.nome_social,
-        )
+        profissional = ProfissionalService.create_profissional(serializer.validated_data)
+        # O serializer precisa ser populado com a instância criada
+        serializer.instance = profissional
 
     def perform_update(self, serializer):
-        profissional = serializer.save()
-        logger.info(
-            "Profissional atualizado: ID=%d, Nome=%s",
-            profissional.id,
-            profissional.nome_social,
+        profissional = ProfissionalService.update_profissional(
+            self.get_object(), serializer.validated_data
         )
+        serializer.instance = profissional
 
     def perform_destroy(self, instance):
-        logger.info(
-            "Profissional excluído: ID=%d, Nome=%s",
-            instance.id,
-            instance.nome_social,
-        )
-        instance.delete()
+        """Delega exclusão para a camada de serviço."""
+        ProfissionalService.delete_profissional(instance)
 
     def destroy(self, request, *args, **kwargs):
+        """
+        Sobrescreve destroy para traduzir exceções de domínio em respostas HTTP.
+
+        A lógica de verificação de consultas vinculadas está na camada de serviço
+        (ProfissionalService.delete_profissional), mantendo a view fina.
+        """
         instance = self.get_object()
 
-        # Verificar se há consultas vinculadas
-        if instance.consultas.exists():
+        try:
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProfissionalComConsultasException as exc:
             return Response(
                 {
                     "error": True,
-                    "message": (
-                        "Não é possível excluir este profissional pois existem "
-                        "consultas vinculadas. Exclua as consultas primeiro."
-                    ),
+                    "code": exc.code,
+                    "message": exc.message,
                 },
                 status=status.HTTP_409_CONFLICT,
             )
-
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -128,15 +128,152 @@ jobs:
           echo "✅ Imagem Docker construída e verificada com sucesso!"
 
   # ==========================================
-  # NOTA: Deploy Staging e Production
+  # JOB 4: Deploy Staging
   # ==========================================
-  # Os jobs de deploy estão preparados para serem ativados
-  # quando a infraestrutura AWS estiver configurada.
-  #
-  # Para ativar, configure os seguintes secrets no GitHub:
-  #   - AWS_ACCESS_KEY_ID
-  #   - AWS_SECRET_ACCESS_KEY
-  #   - AWS_REGION
-  #
-  # Estratégia de deploy: Blue/Green via AWS ECS
-  # Veja README.md para detalhes completos.
+  deploy-staging:
+    name: 🚀 Deploy Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/staging'
+    environment:
+      name: staging
+      url: https://staging.lacrei-saude.com.br
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 🔐 Login no Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 🐳 Build & Push para ECR (Staging)
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: lacrei-saude-api
+          IMAGE_TAG: staging-${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:staging
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:staging
+          echo "✅ Imagem enviada para ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: 🚀 Deploy para ECS (Staging)
+        env:
+          CLUSTER: lacrei-cluster-staging
+          SERVICE: lacrei-api-staging
+        run: |
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --force-new-deployment \
+            --query 'service.taskDefinition' \
+            --output text
+          echo "🚀 Deploy staging iniciado! Aguardando estabilização..."
+
+      - name: ⏳ Aguardar estabilização do serviço
+        env:
+          CLUSTER: lacrei-cluster-staging
+          SERVICE: lacrei-api-staging
+        run: |
+          aws ecs wait services-stable \
+            --cluster $CLUSTER \
+            --services $SERVICE
+          echo "✅ Serviço staging estável e saudável!"
+
+      - name: 🏥 Verificar health check
+        run: |
+          sleep 10
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.lacrei-saude.com.br/api/health/ || echo "000")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Health check staging: OK ($HTTP_STATUS)"
+          else
+            echo "⚠️ Health check staging retornou: $HTTP_STATUS (pode estar inicializando)"
+          fi
+
+  # ==========================================
+  # JOB 5: Deploy Production (Blue/Green)
+  # ==========================================
+  deploy-production:
+    name: 🏭 Deploy Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://api.lacrei-saude.com.br
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: 🔐 Login no Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: 🐳 Build & Push para ECR (Production)
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: lacrei-saude-api
+          IMAGE_TAG: prod-${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "✅ Imagem enviada para ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: 🏭 Deploy Blue/Green para ECS (Production)
+        env:
+          CLUSTER: lacrei-cluster
+          SERVICE: lacrei-api
+        run: |
+          echo "🔵 Iniciando Blue/Green deploy..."
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --force-new-deployment \
+            --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
+            --query 'service.taskDefinition' \
+            --output text
+          echo "🚀 Deploy produção iniciado!"
+
+      - name: ⏳ Aguardar Blue/Green completo
+        env:
+          CLUSTER: lacrei-cluster
+          SERVICE: lacrei-api
+        run: |
+          echo "⏳ Aguardando nova versão (Green) ficar saudável..."
+          aws ecs wait services-stable \
+            --cluster $CLUSTER \
+            --services $SERVICE
+          echo "✅ Blue/Green deploy concluído! Tráfego migrado para nova versão."
+
+      - name: 🏥 Verificar health check de produção
+        run: |
+          sleep 15
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.lacrei-saude.com.br/api/health/ || echo "000")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Health check produção: OK ($HTTP_STATUS)"
+            RESPONSE=$(curl -s https://api.lacrei-saude.com.br/api/health/)
+            echo "📊 Resposta: $RESPONSE"
+          else
+            echo "❌ Health check produção falhou: $HTTP_STATUS"
+            echo "🔄 Considere rollback manual via: aws ecs update-service --cluster lacrei-cluster --service lacrei-api --force-new-deployment"
+            exit 1
+          fi

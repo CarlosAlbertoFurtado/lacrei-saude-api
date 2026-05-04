@@ -35,6 +35,7 @@ class RequestLoggingMiddleware:
         path = request.get_full_path()
         user = getattr(request, "user", None)
         user_info = str(user) if user and user.is_authenticated else "anonymous"
+        correlation_id = getattr(request, "correlation_id", "-")
 
         response = self.get_response(request)
 
@@ -42,13 +43,14 @@ class RequestLoggingMiddleware:
         duration = time.time() - start_time
         status_code = response.status_code
 
-        # Log de acesso
+        # Log de acesso com correlation ID para rastreamento
         log_message = (
             f"{method} {path} | "
             f"Status: {status_code} | "
             f"User: {user_info} | "
             f"IP: {client_ip} | "
-            f"Duration: {duration:.3f}s"
+            f"Duration: {duration:.3f}s | "
+            f"CID: {correlation_id}"
         )
 
         if status_code >= 500:
