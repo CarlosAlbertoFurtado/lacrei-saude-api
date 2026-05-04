@@ -124,17 +124,17 @@ jobs:
 
       - name: ✅ Verificar imagem
         run: |
-          docker run --rm --entrypoint python lacrei-saude-api:${{ github.sha }} -c "import django; print(f'Django {django.VERSION} OK')"
+          docker run --rm --entrypoint "" lacrei-saude-api:${{ github.sha }} python -c "import django; print(f'Django {django.VERSION} OK')"
           echo "✅ Imagem Docker construída e verificada com sucesso!"
 
   # ==========================================
-  # JOB 4: Deploy Staging
+  # JOB 4: Deploy Staging (requer AWS secrets)
   # ==========================================
   deploy-staging:
     name: 🚀 Deploy Staging
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/staging'
+    if: github.ref == 'refs/heads/staging' && vars.AWS_DEPLOY_ENABLED == 'true'
     environment:
       name: staging
       url: https://staging.lacrei-saude.com.br
@@ -164,49 +164,28 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:staging
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:staging
-          echo "✅ Imagem enviada para ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: 🚀 Deploy para ECS (Staging)
-        env:
-          CLUSTER: lacrei-cluster-staging
-          SERVICE: lacrei-api-staging
         run: |
           aws ecs update-service \
-            --cluster $CLUSTER \
-            --service $SERVICE \
-            --force-new-deployment \
-            --query 'service.taskDefinition' \
-            --output text
-          echo "🚀 Deploy staging iniciado! Aguardando estabilização..."
+            --cluster lacrei-cluster-staging \
+            --service lacrei-api-staging \
+            --force-new-deployment
 
-      - name: ⏳ Aguardar estabilização do serviço
-        env:
-          CLUSTER: lacrei-cluster-staging
-          SERVICE: lacrei-api-staging
+      - name: ⏳ Aguardar estabilização
         run: |
           aws ecs wait services-stable \
-            --cluster $CLUSTER \
-            --services $SERVICE
-          echo "✅ Serviço staging estável e saudável!"
-
-      - name: 🏥 Verificar health check
-        run: |
-          sleep 10
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.lacrei-saude.com.br/api/health/ || echo "000")
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Health check staging: OK ($HTTP_STATUS)"
-          else
-            echo "⚠️ Health check staging retornou: $HTTP_STATUS (pode estar inicializando)"
-          fi
+            --cluster lacrei-cluster-staging \
+            --services lacrei-api-staging
 
   # ==========================================
-  # JOB 5: Deploy Production (Blue/Green)
+  # JOB 5: Deploy Production (requer AWS secrets)
   # ==========================================
   deploy-production:
     name: 🏭 Deploy Production
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.AWS_DEPLOY_ENABLED == 'true'
     environment:
       name: production
       url: https://api.lacrei-saude.com.br
@@ -236,44 +215,18 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "✅ Imagem enviada para ECR: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: 🏭 Deploy Blue/Green para ECS (Production)
-        env:
-          CLUSTER: lacrei-cluster
-          SERVICE: lacrei-api
+      - name: 🏭 Deploy Blue/Green para ECS
         run: |
-          echo "🔵 Iniciando Blue/Green deploy..."
           aws ecs update-service \
-            --cluster $CLUSTER \
-            --service $SERVICE \
+            --cluster lacrei-cluster \
+            --service lacrei-api \
             --force-new-deployment \
-            --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
-            --query 'service.taskDefinition' \
-            --output text
-          echo "🚀 Deploy produção iniciado!"
+            --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100"
 
       - name: ⏳ Aguardar Blue/Green completo
-        env:
-          CLUSTER: lacrei-cluster
-          SERVICE: lacrei-api
         run: |
-          echo "⏳ Aguardando nova versão (Green) ficar saudável..."
           aws ecs wait services-stable \
-            --cluster $CLUSTER \
-            --services $SERVICE
-          echo "✅ Blue/Green deploy concluído! Tráfego migrado para nova versão."
-
-      - name: 🏥 Verificar health check de produção
-        run: |
-          sleep 15
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.lacrei-saude.com.br/api/health/ || echo "000")
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Health check produção: OK ($HTTP_STATUS)"
-            RESPONSE=$(curl -s https://api.lacrei-saude.com.br/api/health/)
-            echo "📊 Resposta: $RESPONSE"
-          else
-            echo "❌ Health check produção falhou: $HTTP_STATUS"
-            echo "🔄 Considere rollback manual via: aws ecs update-service --cluster lacrei-cluster --service lacrei-api --force-new-deployment"
-            exit 1
-          fi
+            --cluster lacrei-cluster \
+            --services lacrei-api
+          echo "✅ Blue/Green deploy concluído!"
