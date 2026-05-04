@@ -23,7 +23,6 @@ from core.domain import (
 )
 
 from ..models import Consulta
-from ..validators import ConsultaValidator
 
 logger = logging.getLogger("apps")
 
@@ -120,6 +119,6 @@ class ConsultaService:
         """
         Busca todas as consultas de um profissional específico.
         """
-        return Consulta.objects.filter(
-            profissional_id=profissional_id
-        ).select_related("profissional")
+        return Consulta.objects.filter(profissional_id=profissional_id).select_related(
+            "profissional"
+        )

@@ -258,7 +258,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "[{asctime}] {levelname} {name} {module} [{correlation_id}] {message}",
+            "format": "[{asctime}] {levelname} {name} {module} [{correlation_id}] {message}",  # noqa: E501\r
             "style": "{",
         },
         "simple": {

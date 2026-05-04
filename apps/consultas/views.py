@@ -13,10 +13,10 @@ Segurança:
 import logging
 
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -103,6 +103,7 @@ class ConsultaViewSet(viewsets.ModelViewSet):
             serializer.instance = consulta
         except ValueError as e:
             from rest_framework.exceptions import ValidationError
+
             raise ValidationError({"data": str(e)})
 
     def perform_update(self, serializer):
@@ -113,12 +114,17 @@ class ConsultaViewSet(viewsets.ModelViewSet):
             serializer.instance = consulta
         except ValueError as e:
             from rest_framework.exceptions import ValidationError
+
             raise ValidationError({"data": str(e)})
 
     def perform_destroy(self, instance):
         ConsultaService.cancelar_consulta(instance)
 
-    @action(detail=False, methods=["get"], url_path="por-profissional/(?P<profissional_id>[^/.]+)")
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="por-profissional/(?P<profissional_id>[^/.]+)",
+    )
     def por_profissional(self, request, profissional_id=None):
         """Busca consultas vinculadas a um ID de profissional."""
         consultas = ConsultaService.buscar_por_profissional(profissional_id)

@@ -13,22 +13,21 @@ Cobertura expandida:
 - Paginação, filtros e ordenação
 """
 
-from unittest.mock import patch
+from datetime import timedelta
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.consultas.models import Consulta
-from django.utils import timezone
-from datetime import timedelta
+from core.domain import ProfissionalComConsultasException
 
 from .models import Profissional
 from .services import ProfissionalService
-from core.domain import ProfissionalComConsultasException, NotFoundException
 
 
 class ProfissionalBaseTestCase(APITestCase):
@@ -198,7 +197,7 @@ class ProfissionalCreateTests(ProfissionalBaseTestCase):
             "nome_social": '<b>Nome</b><script>alert("x")</script> Social',
             "profissao": '<img src=x onerror=alert("x")>Medicina',
             "endereco": '<a href="evil">Rua</a> das Flores, 123',
-            "contato": '<script>steal()</script>contato@email.com',
+            "contato": "<script>steal()</script>contato@email.com",
         }
         response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -279,9 +278,7 @@ class ProfissionalReadTests(ProfissionalBaseTestCase):
 
     def test_filtrar_profissao_inexistente(self):
         """Deve retornar lista vazia para profissão que não existe."""
-        response = self.client.get(
-            self.list_url, {"profissao": "ProfissaoInexistente"}
-        )
+        response = self.client.get(self.list_url, {"profissao": "ProfissaoInexistente"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 0)
 
@@ -430,9 +427,7 @@ class ProfissionalDeleteTests(ProfissionalBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("error", response.data)
         # Profissional NÃO deve ter sido excluído
-        self.assertTrue(
-            Profissional.objects.filter(pk=self.profissional.pk).exists()
-        )
+        self.assertTrue(Profissional.objects.filter(pk=self.profissional.pk).exists())
 
     def test_dupla_exclusao_retorna_404(self):
         """Deve retornar 404 ao tentar excluir profissional já excluído."""
@@ -487,9 +482,7 @@ class ProfissionalAuthTests(APITestCase):
             "eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxMDAwMDAwMDAwfQ."
             "invalid-signature-here"
         )
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {expired_token}"
-        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {expired_token}")
         response = self.client.get(reverse("profissional-list"))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 

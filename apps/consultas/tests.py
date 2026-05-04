@@ -24,7 +24,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.profissionais.models import Profissional
-from core.domain import AgendamentoRetroativoException, ValidationException
+from core.domain import AgendamentoRetroativoException
 
 from .models import Consulta
 from .services.consulta_service import ConsultaService
@@ -113,7 +113,7 @@ class ConsultaCreateTests(ConsultaBaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_criar_consulta_com_data_retroativa(self):
-        """Deve retornar erro ao tentar agendar em data retroativa (Regra de Negócio)."""
+        """Deve retornar erro ao agendar em data retroativa."""
         past_date = timezone.now() - timedelta(days=1)
         data = self.valid_data.copy()
         data["data"] = past_date.isoformat()
@@ -430,9 +430,7 @@ class ConsultaUpdateTests(ConsultaBaseTestCase):
         import time
 
         time.sleep(0.1)
-        self.client.patch(
-            self.detail_url, {"observacoes": "Editado"}, format="json"
-        )
+        self.client.patch(self.detail_url, {"observacoes": "Editado"}, format="json")
         response_after = self.client.get(self.detail_url)
         self.assertNotEqual(
             response_before.data["updated_at"],
@@ -469,9 +467,7 @@ class ConsultaDeleteTests(ConsultaBaseTestCase):
     def test_exclusao_nao_afeta_outras_consultas(self):
         """Excluir uma consulta não deve afetar as outras."""
         self.client.delete(self.detail_url)
-        self.assertTrue(
-            Consulta.objects.filter(pk=self.consulta_prof2.pk).exists()
-        )
+        self.assertTrue(Consulta.objects.filter(pk=self.consulta_prof2.pk).exists())
 
     def test_exclusao_nao_afeta_profissional(self):
         """Excluir consulta não deve afetar o profissional vinculado."""

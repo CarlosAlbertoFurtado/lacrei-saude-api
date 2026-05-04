@@ -12,12 +12,11 @@ Métricas coletadas:
 - Uptime da aplicação
 """
 
+import logging
 import statistics
 import threading
 import time
 from collections import defaultdict
-
-import logging
 
 logger = logging.getLogger("core.middleware")
 

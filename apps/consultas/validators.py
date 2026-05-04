@@ -9,7 +9,11 @@ deve existir" são regras de DOMÍNIO, não de API.
 from django.utils import timezone
 
 from apps.profissionais.models import Profissional
-from core.domain import AgendamentoRetroativoException, NotFoundException, ValidationException
+from core.domain import (
+    AgendamentoRetroativoException,
+    NotFoundException,
+    ValidationException,
+)
 
 
 class ConsultaValidator:

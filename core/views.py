@@ -9,8 +9,8 @@ ferramentas de monitoramento.
 import platform
 import time
 
-from django.db import connection
 from django.conf import settings
+from django.db import connection
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -55,17 +55,17 @@ class HealthCheckView(APIView):
             health["checks"]["database"]["latency_ms"] = round(db_latency, 2)
 
             # Contagem para métricas de negócio
-            from apps.profissionais.models import Profissional
             from apps.consultas.models import Consulta
+            from apps.profissionais.models import Profissional
 
             health["metrics"] = {
                 "total_profissionais": Profissional.objects.count(),
                 "total_consultas": Consulta.objects.count(),
-                "consultas_futuras": Consulta.objects.filter(
-                    data__gte=time.time()
-                ).count()
-                if False
-                else None,  # Placeholder para query futura
+                "consultas_futuras": (
+                    Consulta.objects.filter(data__gte=time.time()).count()
+                    if False
+                    else None
+                ),  # Placeholder para query futura
             }
 
             # Métricas de consultas futuras usando timezone
@@ -147,9 +147,10 @@ class MetricsView(APIView):
             metrics = collector.get_metrics()
 
             # Adicionar métricas de negócio
-            from apps.profissionais.models import Profissional
-            from apps.consultas.models import Consulta
             from django.utils import timezone
+
+            from apps.consultas.models import Consulta
+            from apps.profissionais.models import Profissional
 
             metrics["business"] = {
                 "total_profissionais": Profissional.objects.count(),

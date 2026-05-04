@@ -6,8 +6,6 @@ separadas dos serializers (validação de API) e dos models (validação de banc
 Isso permite reusar as mesmas regras em contextos não-HTTP (CLI, tasks, etc).
 """
 
-import re
-
 from core.domain import ValidationException
 
 

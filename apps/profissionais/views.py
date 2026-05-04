@@ -20,16 +20,12 @@ import logging
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.domain import (
-    ConflictException,
-    NotFoundException,
     ProfissionalComConsultasException,
-    ValidationException,
 )
 
 from .models import Profissional
@@ -103,7 +99,9 @@ class ProfissionalViewSet(viewsets.ModelViewSet):
         return ProfissionalService.list_profissionais(super().get_queryset())
 
     def perform_create(self, serializer):
-        profissional = ProfissionalService.create_profissional(serializer.validated_data)
+        profissional = ProfissionalService.create_profissional(
+            serializer.validated_data
+        )
         # O serializer precisa ser populado com a instância criada
         serializer.instance = profissional
 

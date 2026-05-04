@@ -17,7 +17,6 @@ from django.db import transaction
 from django.db.models import Count
 
 from core.domain import (
-    ConflictException,
     NotFoundException,
     ProfissionalComConsultasException,
 )
@@ -102,9 +101,7 @@ class ProfissionalService:
         """
         total_consultas = profissional.consultas.count()
         if total_consultas > 0:
-            raise ProfissionalComConsultasException(
-                profissional.id, total_consultas
-            )
+            raise ProfissionalComConsultasException(profissional.id, total_consultas)
 
         profissional_id = profissional.id
         profissional.delete()
